@@ -3,6 +3,8 @@ import numpy as np
 from numpy import pi, sqrt, cos, sin, exp, conj, real, imag
 import scipy
 from scipy.spatial.transform import Rotation
+import math
+import numbers
 
 # k is an array whose last dimension gives Cartesian components of momentum (of length 3)
 
@@ -96,9 +98,14 @@ class magnonsystem_t:
     """ Class description. 
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
     """
-    def __init__(self, dim, sl_rotations):
+    def __init__(self, dim, spin_magnitudes, sl_rotations):
         # Check on argument 'dim'
         assert isinstance(dim, int), '"dim" must be an int'
+        # Checks on argument 'spin_magnitudes'
+        assert len(spin_magnitudes)==len(sl_rotations), 'Arguments "spin_magnitudes" and "sl_rotations" must have the same number of elements'
+        for el in spin_magnitudes:
+            assert isinstance(el, numbers.Real)
+            assert math.isclose(0., el % 0.5), 'Elements of "spin_magnitudes" must be non-negative multiples of 0.5'
         # Checks on argument 'sl_rotations'
         for el in sl_rotations:
             assert isinstance(el, scipy.spatial.transform.rotation.Rotation), '"sl_rotations" must be a list of instances of scipy.spatial.transform.rotation.Rotation'
@@ -147,6 +154,47 @@ class magnonsystem_t:
         self.couplings[tup] = Jtensor
         
         return
+    
+    def add_coupling_(self, R, sl1, sl2, heisen=None, Jdiag=None, D=None, Gamma=None):
+        assert (heisen is None) or (Jdiag is None), 'Cannot provide both "heisen" and "Jdiag"'
+        
+        Jtensor = np.zeros([3,3], float)
+        
+        if heisen is not None:
+            assert isinstance(heisen, float), ''
+            Jtensor += heisen * np.eye(3)
+            
+        if Jdiag is not None:
+            assert isinstance(Jdiag, np.ndarray), '"Jdiag" must be a vector'
+            assert Jdiag.shape==(3,), '"Jdiag" should have dimension (3,)'
+            assert np.isrealobj(Jdiag), '"Jdiag" must be real valued'
+            Jtensor += np.diag(Jdiag)
+        
+        if D is not None:
+            assert isinstance(D, np.ndarray), '"D" must be a vector'
+            assert D.shape==(3,), '"D" should have dimension (3,)'
+            assert np.isrealobj(D), '"D" must be real valued'
+            D0 = D[0]
+            D1 = D[1]
+            D2 = D[2]
+            Jtensor += np.array([[ 0.,  D2, -D1],
+                                 [-D2,  0.,  D0],
+                                 [ D1, -D0,  0.]])
+        
+        if Gamma is not None:
+            assert isinstance(Gamma, np.ndarray), '"Gamma" must be a vector'
+            assert Gamma.shape==(3,), '"Gamma" should have dimension (3,)'
+            assert np.isrealobj(Gamma), '"Gamma" must be real valued'
+            G0 = Gamma[0]
+            G1 = Gamma[1]
+            G2 = Gamma[2]
+            Jtensor += np.array([[0., G2, G1],
+                                 [G2, 0., G0],
+                                 [G1, G0, 0.]])
+        
+        self.add_coupling(R, sl1, sl2, Jtensor)
+        
+        return
 
 def test():
     dim = 2
@@ -155,7 +203,9 @@ def test():
     r1 = Rotation.from_rotvec(pi * np.array([0,1,0]))
     sl_rotations = [r0, r1]
     
-    magnonsystem = magnonsystem_t(dim, sl_rotations)
+    spin_magnitudes = [0.5, 1.]
+    
+    magnonsystem = magnonsystem_t(dim, spin_magnitudes, sl_rotations)
     print(f'{magnonsystem.dim = }')
     
     magnonsystem.add_coupling((0,0), 0, 1, np.ones([3,3]))
@@ -168,6 +218,8 @@ def test():
     magnonsystem.add_coupling((0,1), 0, 0, np.ones([3,3]))
     magnonsystem.add_coupling((0,1), 1, 1, np.ones([3,3]))
     magnonsystem.add_coupling((0,1), 0, 1, np.ones([3,3]))
+    
+    magnonsystem.add_coupling_((1,1), 0, 0, Jdiag=np.array([0,0,1]))
     print(f'{magnonsystem.couplings = }')
 
 
