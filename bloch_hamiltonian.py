@@ -212,7 +212,22 @@ class magnonsystem_t:
         
         return
     
-    def add_field(self):
+    def add_field(self, sl_list, field):
+        # Make "sl_list" a list if it isn't yet
+        if not hasattr(sl_list, '__iter__'):
+            sl_list = [sl_list]
+        # Checks on "sl_list"
+        for sl in sl_list:
+            assert sl in range(self.dim), 'A value of "sl_list" is outside the specified range. Problematic value is {}'.format(sl)
+            assert sl not in self.fields, 'Field for sl = {} has already been specified'.format(sl)
+        
+        field = np.atleast_1d(field) # Ensures field is a numpy array
+        
+        for sl in sl_list:
+            self.fields[sl] = field
+            self.fields_rot[sl] = self.sl_rotations[sl].as_matrix().T @ field
+            assert np.allclose(self.sl_rotations[sl].as_matrix().T @ field, self.sl_rotations[sl].apply(field, inverse=True))
+        
         return
     
     def classical_energy(self):
@@ -221,8 +236,12 @@ class magnonsystem_t:
         for tup in self.couplings_rot:
             sl1 = tup[1]
             sl2 = tup[2]
-            Jtilde_zz = (self.couplings_rot[tup])[2,2]
+            Jtilde_zz = self.couplings_rot[tup][2,2]
             accumulator += self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
+        
+        for sl in self.fields_rot:
+            Btilde_z = self.fields_rot[sl][2]
+            accumulator += - self.spin_magnitudes[sl] * Btilde_z
         
         return accumulator
     
@@ -254,7 +273,11 @@ def test():
     
     magnonsystem.add_coupling((1,1), 0, 0, Jdiag=np.array([0,0,1]))
     
+    magnonsystem.add_field(0, [0,0,0.1])
+    magnonsystem.add_field(1, [0,0,-0.3])
+    
     print(f'{magnonsystem.couplings = }')
+    print(f'{magnonsystem.fields = }')
     print(f'{magnonsystem.classical_energy() = }')
 
 
