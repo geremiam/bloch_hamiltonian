@@ -104,19 +104,28 @@ class magnonsystem_t:
         # Checks on argument 'spin_magnitudes'
         assert len(spin_magnitudes)==len(sl_rotations), 'Arguments "spin_magnitudes" and "sl_rotations" must have the same number of elements'
         for el in spin_magnitudes:
-            assert isinstance(el, numbers.Real)
+            assert isinstance(el, numbers.Real), 'Elements of "spin_magnitudes" must be real valued'
             assert math.isclose(0., el % 0.5), 'Elements of "spin_magnitudes" must be non-negative multiples of 0.5'
         # Checks on argument 'sl_rotations'
         for el in sl_rotations:
             assert isinstance(el, scipy.spatial.transform.rotation.Rotation), '"sl_rotations" must be a list of instances of scipy.spatial.transform.rotation.Rotation'
             assert el.single==True, 'Each element of "sl_rotations" must be a single rotation'
         
+        #################################################################################
+        
         self.dim = dim # Spatial dimensionality of system
         
+        self.spin_magnitudes = spin_magnitudes
+        
         self.n_sl = len(sl_rotations) # Number of sublattices in the magnetic unit cell
+        
         self.sl_rotations = sl_rotations # List of rotation objects
         
         self.couplings = {} # List in which to store couplings
+        self.couplings_rot = {} # List in which to store the couplings in the local basis
+        
+        self.fields = {}
+        self.fields_rot = {}
     
     def check_for_coupling(self, tup):
         
@@ -129,7 +138,7 @@ class magnonsystem_t:
         
         return tup_check or tup_rev_check
     
-    def add_coupling(self, R, sl1, sl2, Jtensor):
+    def add_coupling_(self, R, sl1, sl2, Jtensor):
         # Checks on argument R
         assert isinstance(R, tuple), '"R" must be an tuple'
         assert len(R)==self.dim, '"R" should have dim = {} components'.format(self.dim)
@@ -145,17 +154,24 @@ class magnonsystem_t:
         assert Jtensor.shape==(3,3), '"Jtensor" should have dimensions (3,3)'
         assert np.isrealobj(Jtensor), '"Jtensor" must be real valued'
         
+        #################################################################################
+        
+        # Tuple to use as dictionary key
         tup = (R, sl1, sl2)
         
+        # Refuse "self interaction" terms
         assert tup != (tuple(np.zeros([self.dim], int)), 0, 0), 'Intra-spin terms not handled'
         
+        # Check that the term hasn't already been added
         assert not self.check_for_coupling(tup), 'This term or its inverse has already been added'
         
+        # Assign value
         self.couplings[tup] = Jtensor
+        self.couplings_rot[tup] = self.sl_rotations[sl1].as_matrix().T @ Jtensor @ self.sl_rotations[sl2].as_matrix().T
         
         return
     
-    def add_coupling_(self, R, sl1, sl2, heisen=None, Jdiag=None, D=None, Gamma=None):
+    def add_coupling(self, R, sl1, sl2, heisen=None, Jdiag=None, D=None, Gamma=None):
         assert (heisen is None) or (Jdiag is None), 'Cannot provide both "heisen" and "Jdiag"'
         
         Jtensor = np.zeros([3,3], float)
@@ -192,8 +208,25 @@ class magnonsystem_t:
                                  [G2, 0., G0],
                                  [G1, G0, 0.]])
         
-        self.add_coupling(R, sl1, sl2, Jtensor)
+        self.add_coupling_(R, sl1, sl2, Jtensor)
         
+        return
+    
+    def add_field(self):
+        return
+    
+    def classical_energy(self):
+        accumulator = 0.
+        
+        for tup in self.couplings_rot:
+            sl1 = tup[1]
+            sl2 = tup[2]
+            Jtilde_zz = (self.couplings_rot[tup])[2,2]
+            accumulator += self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
+        
+        return accumulator
+    
+    def bloch_ham(self, k):
         return
 
 def test():
@@ -203,24 +236,26 @@ def test():
     r1 = Rotation.from_rotvec(pi * np.array([0,1,0]))
     sl_rotations = [r0, r1]
     
-    spin_magnitudes = [0.5, 1.]
+    spin_magnitudes = [0.5, 0.5]
     
     magnonsystem = magnonsystem_t(dim, spin_magnitudes, sl_rotations)
     print(f'{magnonsystem.dim = }')
     
-    magnonsystem.add_coupling((0,0), 0, 1, np.ones([3,3]))
+    magnonsystem.add_coupling_((0,0), 0, 1, np.ones([3,3]))
     
-    magnonsystem.add_coupling((1,0), 0, 0, np.ones([3,3]))
-    magnonsystem.add_coupling((1,0), 1, 1, np.ones([3,3]))
-    magnonsystem.add_coupling((1,0), 0, 1, np.ones([3,3]))
-    magnonsystem.add_coupling((1,0), 1, 0, np.ones([3,3]))
+    magnonsystem.add_coupling_((1,0), 0, 0, np.ones([3,3]))
+    magnonsystem.add_coupling_((1,0), 1, 1, np.ones([3,3]))
+    magnonsystem.add_coupling_((1,0), 0, 1, np.ones([3,3]))
+    magnonsystem.add_coupling_((1,0), 1, 0, np.ones([3,3]))
     
-    magnonsystem.add_coupling((0,1), 0, 0, np.ones([3,3]))
-    magnonsystem.add_coupling((0,1), 1, 1, np.ones([3,3]))
-    magnonsystem.add_coupling((0,1), 0, 1, np.ones([3,3]))
+    magnonsystem.add_coupling_((0,1), 0, 0, np.ones([3,3]))
+    magnonsystem.add_coupling_((0,1), 1, 1, np.ones([3,3]))
+    magnonsystem.add_coupling_((0,1), 0, 1, np.ones([3,3]))
     
-    magnonsystem.add_coupling_((1,1), 0, 0, Jdiag=np.array([0,0,1]))
+    magnonsystem.add_coupling((1,1), 0, 0, Jdiag=np.array([0,0,1]))
+    
     print(f'{magnonsystem.couplings = }')
+    print(f'{magnonsystem.classical_energy() = }')
 
 
 if __name__ == "__main__":
