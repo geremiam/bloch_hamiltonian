@@ -140,7 +140,7 @@ class magnonsystem_t:
     
     def add_coupling_(self, R, sl1, sl2, Jtensor):
         # Checks on argument R
-        assert isinstance(R, tuple), '"R" must be an tuple'
+        assert isinstance(R, tuple), '"R" must be a tuple'
         assert len(R)==self.dim, '"R" should have dim = {} components'.format(self.dim)
         for i in range(self.dim):
             assert isinstance(R[i], int), '"R" must contain ints'
@@ -181,13 +181,13 @@ class magnonsystem_t:
             Jtensor += heisen * np.eye(3)
             
         if Jdiag is not None:
-            assert isinstance(Jdiag, np.ndarray), '"Jdiag" must be a vector'
+            Jdiag = np.atleast_1d(Jdiag)
             assert Jdiag.shape==(3,), '"Jdiag" should have dimension (3,)'
             assert np.isrealobj(Jdiag), '"Jdiag" must be real valued'
             Jtensor += np.diag(Jdiag)
         
         if D is not None:
-            assert isinstance(D, np.ndarray), '"D" must be a vector'
+            D = np.atleast_1d(D)
             assert D.shape==(3,), '"D" should have dimension (3,)'
             assert np.isrealobj(D), '"D" must be real valued'
             D0 = D[0]
@@ -198,7 +198,7 @@ class magnonsystem_t:
                                  [ D1, -D0,  0.]])
         
         if Gamma is not None:
-            assert isinstance(Gamma, np.ndarray), '"Gamma" must be a vector'
+            Gamma = np.atleast_1d(Gamma)
             assert Gamma.shape==(3,), '"Gamma" should have dimension (3,)'
             assert np.isrealobj(Gamma), '"Gamma" must be real valued'
             G0 = Gamma[0]
@@ -271,7 +271,7 @@ def test():
     magnonsystem.add_coupling_((0,1), 1, 1, np.ones([3,3]))
     magnonsystem.add_coupling_((0,1), 0, 1, np.ones([3,3]))
     
-    magnonsystem.add_coupling((1,1), 0, 0, Jdiag=np.array([0,0,1]))
+    magnonsystem.add_coupling((1,1), 0, 0, Jdiag=[0,0,1])
     
     magnonsystem.add_field(0, [0,0,0.1])
     magnonsystem.add_field(1, [0,0,-0.3])
