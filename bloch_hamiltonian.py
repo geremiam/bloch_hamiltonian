@@ -113,6 +113,10 @@ class magnonsystem_t:
         
         #################################################################################
         
+        self._N = np.array([[  1./sqrt(2.),  1./sqrt(2.), 0.],
+                            [-1.j/sqrt(2.), 1.j/sqrt(2.), 0.],
+                            [           0.,           0., 1.]])
+        
         self.dim = dim # Spatial dimensionality of system
         
         self.spin_magnitudes = spin_magnitudes
@@ -121,11 +125,15 @@ class magnonsystem_t:
         
         self.sl_rotations = sl_rotations # List of rotation objects
         
-        self.couplings = {} # List in which to store couplings
-        self.couplings_rot = {} # List in which to store the couplings in the local basis
-        
         self.fields = {}
         self.fields_rot = {}
+        
+        self.couplings = {} # Dictionary in which to store couplings
+        self.couplings_sym = {} # Dictionary in which to store couplings in a symmetric way
+        self.couplings_sym_rot = {} # Dictionary in which to store the couplings in the local basis
+        self.cal_M = {} # Dictionary in which to store the couplings in the "ladder basis"
+        
+        return
     
     def check_for_coupling(self, tup):
         
@@ -165,9 +173,20 @@ class magnonsystem_t:
         # Check that the term hasn't already been added
         assert not self.check_for_coupling(tup), 'This term or its inverse has already been added'
         
-        # Assign value
+        # Assign value as given by user
         self.couplings[tup] = Jtensor
-        self.couplings_rot[tup] = self.sl_rotations[sl1].as_matrix().T @ Jtensor @ self.sl_rotations[sl2].as_matrix().T
+        
+        # Symmetrize couplings, such that Jtensor_ji = Jtensor_ij^T
+        tup_rev = (tuple(-np.array(R)), sl2, sl1)
+        self.couplings_sym[tup]     = Jtensor   / 2.
+        self.couplings_sym[tup_rev] = Jtensor.T / 2.
+        
+        # Compute the couplings as seen in the local bases
+        for t in [tup, tup_rev]:
+            self.couplings_sym_rot[t] = self.sl_rotations[t[1]].as_matrix().T @ self.couplings_sym[t] @ self.sl_rotations[t[2]].as_matrix()
+        
+        for t in [tup, tup_rev]:
+            self.cal_M[t] = self._N.T.conj() @ self.couplings_sym_rot[t] @ self._N
         
         return
     
@@ -233,10 +252,10 @@ class magnonsystem_t:
     def classical_energy(self):
         accumulator = 0.
         
-        for tup in self.couplings_rot:
+        for tup in self.couplings_sym_rot:
             sl1 = tup[1]
             sl2 = tup[2]
-            Jtilde_zz = self.couplings_rot[tup][2,2]
+            Jtilde_zz = self.couplings_sym_rot[tup][2,2]
             accumulator += self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
         
         for sl in self.fields_rot:
@@ -247,8 +266,34 @@ class magnonsystem_t:
     
     def bloch_ham(self, k):
         return
+    
+    def show(self):
+        print(f'{self.dim = }')
+        print(f'{self.spin_magnitudes = }')
+        print(f'{self.fields = }')
+        
+        print('\nself.couplings =')
+        for key, val in self.couplings.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
+    
+        print('self.couplings_sym =')
+        for key, val in self.couplings_sym.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
+    
+        print('self.cal_M =')
+        for key, val in self.cal_M.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
+    
+        print(f'{self.classical_energy() = }')
+        
+        return
 
 def test():
+    np.set_printoptions(linewidth=250)
+    
     dim = 2
     
     r0 = Rotation.identity()
@@ -258,28 +303,33 @@ def test():
     spin_magnitudes = [0.5, 0.5]
     
     magnonsystem = magnonsystem_t(dim, spin_magnitudes, sl_rotations)
-    print(f'{magnonsystem.dim = }')
     
-    magnonsystem.add_coupling_((0,0), 0, 1, np.ones([3,3]))
-    
-    magnonsystem.add_coupling_((1,0), 0, 0, np.ones([3,3]))
-    magnonsystem.add_coupling_((1,0), 1, 1, np.ones([3,3]))
-    magnonsystem.add_coupling_((1,0), 0, 1, np.ones([3,3]))
-    magnonsystem.add_coupling_((1,0), 1, 0, np.ones([3,3]))
-    
-    magnonsystem.add_coupling_((0,1), 0, 0, np.ones([3,3]))
-    magnonsystem.add_coupling_((0,1), 1, 1, np.ones([3,3]))
-    magnonsystem.add_coupling_((0,1), 0, 1, np.ones([3,3]))
-    
-    magnonsystem.add_coupling((1,1), 0, 0, Jdiag=[0,0,1])
     
     magnonsystem.add_field(0, [0,0,0.1])
     magnonsystem.add_field(1, [0,0,-0.3])
     
-    print(f'{magnonsystem.couplings = }')
-    print(f'{magnonsystem.fields = }')
-    print(f'{magnonsystem.classical_energy() = }')
+#     magnonsystem.add_coupling_((1,0), 1, 1, np.ones([3,3]))
+#     magnonsystem.add_coupling_((1,0), 0, 1, np.ones([3,3]))
+#     magnonsystem.add_coupling_((1,0), 1, 0, np.ones([3,3]))
+#     
+#     magnonsystem.add_coupling_((0,1), 0, 0, np.ones([3,3]))
+#     magnonsystem.add_coupling_((0,1), 1, 1, np.ones([3,3]))
+#     magnonsystem.add_coupling_((0,1), 0, 1, np.ones([3,3]))
+    
+    magnonsystem.add_coupling((0,0), 0, 1, heisen=1., D=[0, 0, 0])
+    
+    magnonsystem.add_coupling((1,0), 0, 0, Jdiag=[0,0,1])
+    
+    magnonsystem.show()
+
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.prog = "bloch_hamiltonian.py"
+    parser.description = "Defines object for calculating Bloch Hamiltonians for various systems."
+#     parser.epilog = "Example usage: python3 Haldane_model.py"
+#     parser.add_argument("--processes", type=int, help="Number of processes to use in computation.")
+    args = parser.parse_args()
+    
     test()
