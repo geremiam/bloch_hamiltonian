@@ -132,6 +132,7 @@ class magnonsystem_t:
         self.couplings_sym = {} # Dictionary in which to store couplings in a symmetric way
         self.couplings_sym_rot = {} # Dictionary in which to store the couplings in the local basis
         self.cal_M = {} # Dictionary in which to store the couplings in the "ladder basis"
+        self.m = {} # Dictionary in which to store subblocks of the above
         
         return
     
@@ -181,12 +182,13 @@ class magnonsystem_t:
         self.couplings_sym[tup]     = Jtensor   / 2.
         self.couplings_sym[tup_rev] = Jtensor.T / 2.
         
-        # Compute the couplings as seen in the local bases
         for t in [tup, tup_rev]:
+            # Compute the couplings as seen in the local bases
             self.couplings_sym_rot[t] = self.sl_rotations[t[1]].as_matrix().T @ self.couplings_sym[t] @ self.sl_rotations[t[2]].as_matrix()
-        
-        for t in [tup, tup_rev]:
+            # Compute the couplings in the "ladder basis"
             self.cal_M[t] = self._N.T.conj() @ self.couplings_sym_rot[t] @ self._N
+            # Sub-block of the above
+            self.m[t] = self.cal_M[t][0:2,0:2]
         
         return
     
@@ -244,8 +246,8 @@ class magnonsystem_t:
         
         for sl in sl_list:
             self.fields[sl] = field
-            self.fields_rot[sl] = self.sl_rotations[sl].as_matrix().T @ field
-            assert np.allclose(self.sl_rotations[sl].as_matrix().T @ field, self.sl_rotations[sl].apply(field, inverse=True))
+            self.fields_rot[sl] = self.sl_rotations[sl].apply(field, inverse=True)
+            assert np.allclose(self.sl_rotations[sl].as_matrix().T @ field, self.sl_rotations[sl].apply(field, inverse=True)), 'Oops! May have gotten rotation directions wrong'
         
         return
     
@@ -284,6 +286,11 @@ class magnonsystem_t:
     
         print('self.cal_M =')
         for key, val in self.cal_M.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
+        
+        print('self.m =')
+        for key, val in self.m.items():
             print('\n{} -> \n{}'.format(key, val))
         print('*'*80)
     
