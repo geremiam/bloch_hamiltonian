@@ -123,6 +123,8 @@ class magnonsystem_t:
         
         self.n_sl = len(sl_rotations) # Number of sublattices in the magnetic unit cell
         
+        self.tau3 = np.diag([1.,-1.]*self.n_sl)
+        
         self.sl_rotations = sl_rotations # List of rotation objects
         
         self.fields = {}
@@ -266,8 +268,76 @@ class magnonsystem_t:
         
         return accumulator
     
-    def bloch_ham(self, k):
-        return
+    def coupling_matrices(self):
+        
+        h = self.m
+        
+        # Adding diagonal contribution #################################################
+        
+        # Ensure h has diagonal terms for R=0
+        # These do not exist at this point and so the check is redundant, but I'm still implementing it for future-proofing
+        for sl in range(self.n_sl):
+            tup_diag = ( tuple(np.zeros(self.dim,int)), sl, sl ) # Tuples indexing the diagonal components
+            if tup_diag not in h: # Create a (zero-valued) dictionary entry if necessary
+                h[tup_diag] = np.zeros([2,2], complex)
+        
+        for sl in self.fields_rot:
+            tup_diag = ( tuple(np.zeros(self.dim,int)), sl, sl ) # Tuples indexing the diagonal components
+            
+            # Add Zeeman field contribution
+            Btilde_z = self.fields_rot[sl][2]
+            h[tup_diag] += Btilde_z * np.eye(2)
+        
+        for sl in range(self.n_sl):
+            # Add other contribution
+            accumulator = 0.
+            for tup in self.couplings_sym_rot:
+                R = tup[0]
+                sl1 = tup[1]
+                sl2 = tup[2]
+                
+                if sl2==sl:
+                    accumulator += self.spin_magnitudes[sl1] * self.couplings_sym_rot[tup][2,2]
+                if sl1==sl:
+                    accumulator += self.spin_magnitudes[sl2] * self.couplings_sym_rot[tup][2,2]
+            print(f'{accumulator = }')
+            h[tup_diag] += - accumulator * np.eye(2)
+        
+        
+        # Building H out of the blocks of h #############################################
+        
+        # Create an array H for each R
+        H = {}
+        for tup in h:
+            R = tup[0]
+            H[R] = np.zeros([2*self.n_sl, 2*self.n_sl], complex)
+        
+        # Populating the H arrays with the h arrays
+        for tup in h:
+            R = tup[0]
+            sl1 = tup[1]
+            sl2 = tup[2]
+            
+            # Block in which to place h[tup]
+            inds = ( slice(2*sl1, 2*sl1+2), slice(2*sl2, 2*sl2+2) )
+            
+            H[R][inds] += h[tup]
+        
+        # Check that H[R] and H[-R] are Hermitian conjugates
+        for R in H:
+            assert np.allclose( H[R], H[tuple(-np.array(R))] ), 'Oops! Looks like H[R] H[-R] are not Hermitian conjugates, though they should be.'
+        
+        print('\nh =')
+        for key, val in h.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
+        
+        print('\nH =')
+        for key, val in H.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
+        
+        return H
     
     def show(self):
         print(f'{self.dim = }')
@@ -312,8 +382,8 @@ def test():
     magnonsystem = magnonsystem_t(dim, spin_magnitudes, sl_rotations)
     
     
-    magnonsystem.add_field(0, [0,0,0.1])
-    magnonsystem.add_field(1, [0,0,-0.3])
+#     magnonsystem.add_field(0, [0,0,0.1])
+#     magnonsystem.add_field(1, [0,0,-0.3])
     
 #     magnonsystem.add_coupling_((1,0), 1, 1, np.ones([3,3]))
 #     magnonsystem.add_coupling_((1,0), 0, 1, np.ones([3,3]))
@@ -325,9 +395,11 @@ def test():
     
     magnonsystem.add_coupling((0,0), 0, 1, heisen=1., D=[0, 0, 0])
     
-    magnonsystem.add_coupling((1,0), 0, 0, Jdiag=[0,0,1])
+    magnonsystem.add_coupling((1,0), 0, 0, Jdiag=[1,1,1])
     
     magnonsystem.show()
+    
+    magnonsystem.coupling_matrices()
 
 
 
