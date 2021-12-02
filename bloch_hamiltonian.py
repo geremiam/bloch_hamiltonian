@@ -105,7 +105,8 @@ class magnonsystem_t:
         assert len(spin_magnitudes)==len(sl_rotations), 'Arguments "spin_magnitudes" and "sl_rotations" must have the same number of elements'
         for el in spin_magnitudes:
             assert isinstance(el, numbers.Real), 'Elements of "spin_magnitudes" must be real valued'
-            assert math.isclose(0., el % 0.5), 'Elements of "spin_magnitudes" must be non-negative multiples of 0.5'
+            assert math.isclose(0., el % 0.5), 'Elements of "spin_magnitudes" must be multiples of 0.5'
+            assert el > 0., 'Elements of "spin_magnitudes" must be non-negative'
         # Checks on argument 'sl_rotations'
         for el in sl_rotations:
             assert isinstance(el, scipy.spatial.transform.rotation.Rotation), '"sl_rotations" must be a list of instances of scipy.spatial.transform.rotation.Rotation'
@@ -241,7 +242,7 @@ class magnonsystem_t:
             sl_list = [sl_list]
         # Checks on "sl_list"
         for sl in sl_list:
-            assert sl in range(self.dim), 'A value of "sl_list" is outside the specified range. Problematic value is {}'.format(sl)
+            assert sl in range(self.n_sl), 'A value of "sl_list" is outside the specified range. Problematic value is {}'.format(sl)
             assert sl not in self.fields, 'Field for sl = {} has already been specified'.format(sl)
         
         field = np.atleast_1d(field) # Ensures field is a numpy array
@@ -268,7 +269,7 @@ class magnonsystem_t:
         
         return accumulator
     
-    def coupling_matrices(self):
+    def coupling_matrices(self, verbose=False):
         
         h = self.m
         
@@ -289,6 +290,7 @@ class magnonsystem_t:
             h[tup_diag] += Btilde_z * np.eye(2)
         
         for sl in range(self.n_sl):
+            tup_diag = ( tuple(np.zeros(self.dim,int)), sl, sl ) # Tuples indexing the diagonal components
             # Add other contribution
             accumulator = 0.
             for tup in self.couplings_sym_rot:
@@ -297,11 +299,11 @@ class magnonsystem_t:
                 sl2 = tup[2]
                 
                 if sl2==sl:
-                    accumulator += self.spin_magnitudes[sl1] * self.couplings_sym_rot[tup][2,2]
+                    accumulator += - self.spin_magnitudes[sl1] * self.couplings_sym_rot[tup][2,2] / 2.
                 if sl1==sl:
-                    accumulator += self.spin_magnitudes[sl2] * self.couplings_sym_rot[tup][2,2]
+                    accumulator += - self.spin_magnitudes[sl2] * self.couplings_sym_rot[tup][2,2] / 2.
             print(f'{accumulator = }')
-            h[tup_diag] += - accumulator * np.eye(2)
+            h[tup_diag] += accumulator * np.eye(2)
         
         
         # Building H out of the blocks of h #############################################
@@ -323,19 +325,21 @@ class magnonsystem_t:
             
             H[R][inds] += h[tup]
         
+        if verbose:
+            print('\nh =')
+            for key, val in h.items():
+                print('\n{} -> \n{}'.format(key, val))
+            print('*'*80)
+        
+            print('\nH =')
+            for key, val in H.items():
+                print('\n{} -> \n{}'.format(key, val))
+            print('*'*80)
+        
         # Check that H[R] and H[-R] are Hermitian conjugates
         for R in H:
-            assert np.allclose( H[R], H[tuple(-np.array(R))] ), 'Oops! Looks like H[R] H[-R] are not Hermitian conjugates, though they should be.'
-        
-        print('\nh =')
-        for key, val in h.items():
-            print('\n{} -> \n{}'.format(key, val))
-        print('*'*80)
-        
-        print('\nH =')
-        for key, val in H.items():
-            print('\n{} -> \n{}'.format(key, val))
-        print('*'*80)
+            R_neg = tuple(-np.array(R))
+            assert np.allclose( H[R].T.conj(), H[R_neg] ), 'Oops! Looks like H[{}] and H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
         
         return H
     
@@ -365,6 +369,8 @@ class magnonsystem_t:
         print('*'*80)
     
         print(f'{self.classical_energy() = }')
+        
+        self.coupling_matrices(verbose=True)
         
         return
 
