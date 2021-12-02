@@ -3,6 +3,7 @@ import numpy as np
 import bloch_hamiltonian as bh
 from scipy.spatial.transform import Rotation
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def test_1D_FM():
     
@@ -18,7 +19,17 @@ def test_1D_FM():
     
     magsys.show()
     
-    magsys.coupling_matrices()
+    k = [np.linspace(-1/2., 1/2., num=500)]
+    
+    ham, tau3 = magsys.bloch_ham(k)
+    
+    energies = np.linalg.eigvals(tau3 @ ham)
+    energies = np.sort(energies, axis=-1)
+    
+    fig, ax = plt.subplots()
+    ax.plot(k[0], energies.real)
+    ax.plot(k[0], energies.imag)
+    plt.show()
     
     return
 
@@ -113,10 +124,9 @@ def test_1D_AFM():
     
     magsys.show()
     
-    k = [np.linspace(-1/2., 1/2., num=100)]
+    k = [np.linspace(-1/2., 1/2., num=500)]
     
     ham, tau3 = magsys.bloch_ham(k)
-    
     
     energies = np.linalg.eigvals(tau3 @ ham)
     energies = np.sort(energies, axis=-1)
@@ -128,10 +138,10 @@ def test_1D_AFM():
     
     return
 
-def test_AFM():
+def test_2D_AFM_GS():
     dim = 2
     
-    angles = np.linspace(0., 2.*np.pi, num=100)
+    angles = np.linspace(-np.pi, np.pi, num=100)
     energies = []
     
     for angle in angles:
@@ -157,11 +167,47 @@ def test_AFM():
     
     return
 
-if __name__ == "__main__":
+def test_2D_AFM():
+    dim = 2
+    
+    r0 = Rotation.identity()
+    r1 = Rotation.from_rotvec(np.pi * np.array([0,1,0]))
+    sl_rotations = [r0, r1]
+
+    spin_magnitudes = [1., 1.]
+
+    magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
+
+    magsys.add_coupling((0,0), 0, 1, heisen=1.)
+    magsys.add_coupling((1,0), 0, 1, heisen=1.)
+    magsys.add_coupling((0,1), 0, 1, heisen=1.)
+    magsys.add_coupling((1,1), 0, 1, heisen=1.)
+    
+    magsys.show()
+    
+    k0 = np.linspace(-0.5, 0.5, num=200)
+    k1 = np.linspace(-0.5, 0.5, num=300)
+    k = np.meshgrid(k0, k1, indexing='ij')
+    
+    ham, tau3 = magsys.bloch_ham(k)
+    
+    energies = np.linalg.eigvals(tau3 @ ham)
+    energies = np.sort(energies, axis=-1)
+    print(f'{energies.shape = }')
+    
+    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+    for i in range(energies.shape[-1]):
+        ax.plot_surface(k[0], k[1], energies.real[...,i])
+    plt.show()
+    
+    return
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.prog = "test_magnonsystem.py"
-    parser.description = "Tests for the class magnonsystem_t."
-    parser.epilog = "Example usage: python3 test_magnonsystem.py"
+    parser.prog = 'test_magnonsystem.py'
+    parser.description = 'Tests for the class magnonsystem_t.'
+    parser.epilog = 'Example usage: python3 test_magnonsystem.py'
     args = parser.parse_args()
     
-    test_1D_AFM()
+    test_2D_AFM()
