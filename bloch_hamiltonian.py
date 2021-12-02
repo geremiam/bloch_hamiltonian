@@ -55,7 +55,7 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
         # Calculate dot product and phase factor
         q_dot_R = np.tensordot( np.array(R, float), q, axes=[[0],[0]] )
         phase = np.exp(-2.j * np.pi * q_dot_R)
-        phase = np.reshape(phase, q_shape+(1,1)) # Add two length-one trailing dimensions
+        phase = phase[..., None, None] # Add two length-one trailing dimensions
         # Add term
         retval += H[R] * phase
     
@@ -65,13 +65,15 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
 
 # k is an array whose last dimension gives Cartesian components of momentum (of length 3)
 
-def ham_momentum(k, lattice_vectors, couplings_dic, verbose=False):
+def ham_momentum_cart(k, lattice_vectors, couplings_dic, verbose=False):
     ''' 
     Returns momentum-space hamiltonian based on coupling matrices between nearby sites.
     Broadcasting happens with momentum k.
     
     k : numpy array of shape (..., dim), where dim is the number of dimensions
+    
     lattice_vectors : n-component list of n-component lists of floats
+    
     couplings_dic: {(i1, etc. , idim):arr}, where arr is an (n,n) array
     
     return: array of shape (..., n, n)
@@ -80,29 +82,15 @@ def ham_momentum(k, lattice_vectors, couplings_dic, verbose=False):
     
     k = np.atleast_1d(k) # Converts scalars to 1D arrays. Ensures k is a numpy array
     
-    # Determining spatial dimension from lattice_vectors ################################
-    # If dimension is 1, lattice_vectors does not need to be a list of lists.
-    
-    if isinstance(lattice_vectors, list):
-        dim = len(lattice_vectors)
-        
-        if dim==1: # Make it a list of lists if it isn't yet
-            if not isinstance(lattice_vectors[0], list):
-                lattice_vectors = [lattice_vectors]
-    else: # If lattice_vectors is just a number, take spatial dimension to be 1.
-        dim = 1
-        lattice_vectors = [[lattice_vectors]] # Turn into list of lists
+    # Determining spatial dimension from lattice_vectors
+    dim = len(lattice_vectors)
+    for el in lattice_vectors:
+        assert len(el)==dim, 'Incorrect dimensionality of lattice vectors'
     
     if verbose: smartprint('dim', dim)
     if verbose: smartprint('lattice_vectors', lattice_vectors)
         
     # Numerous checks to be done ########################################################
-    
-    for el in lattice_vectors:
-        assert len(el)==dim, 'Incorrect dimensionality of lattice vectors'
-    
-    # Ensure the keys of the dictionary are all tuples
-    couplings_dic = make_keys_tuples(couplings_dic)
     
     if dim!=1:
         assert k.shape[-1]==dim, 'Last dimension of k must be spatial dimensions'
@@ -110,13 +98,8 @@ def ham_momentum(k, lattice_vectors, couplings_dic, verbose=False):
     for key in couplings_dic.keys():
         assert len(key)==dim, 'Incorrect dimensionality of unit-cell indices in couplings_dic'
         
-        for i in key:
-            assert isinstance(i, int), 'Indices appearing in couplings_dic must be integers'
-        
-        if not np.any(np.array(key)): # If the indices are all zero
-            assert np.allclose( couplings_dic[key], couplings_dic[key].T.conj() ), 'Zero-momentum term must be Hermitian'
-        else: # If the indices are not all zero
-            assert tuple(-np.array(key)) not in couplings_dic, 'couplings_dic should not contain both a vector and its additive inverse'
+        key_neg = tuple(-np.array(key))
+        assert np.allclose( couplings_dic[key].T.conj(), couplings_dic[key_neg] ), 'Oops! Looks like couplings_dic[{}] and couplings_dic[{}] are not Hermitian conjugates, though they should be.'.format(key,key_neg)
     
     values_list = list(couplings_dic.values())
     for i in range(len(values_list)):
@@ -408,6 +391,14 @@ class magnonsystem_t:
         
         return ham, self.tau3
     
+    def bloch_ham_cart(self, k, lattice_vectors):
+        
+        H = self.coupling_matrices()
+        
+        ham = ham_momentum_cart(k, lattice_vectors, H)
+        
+        return ham, self.tau3
+    
     def show(self):
         print(f'{self.dim = }')
         print(f'{self.spin_magnitudes = }')
@@ -480,6 +471,14 @@ def test():
     blochham, tau3 = magnonsystem.bloch_ham(k)
     print(f'{blochham.shape = }')
     print(f'{tau3 = }')
+    
+    
+    lattice_vectors = [[1,0],[0,1]]
+    k = np.moveaxis(k, 0, -1)
+    print(f'{k.shape = }')
+    blochham, tau3 = magnonsystem.bloch_ham_cart(k, lattice_vectors)
+    
+    
 
 
 
