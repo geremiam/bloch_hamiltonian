@@ -90,6 +90,47 @@ def test_1D_AFM_GS2():
     
     return
 
+def test_1D_AFM():
+    '''
+    Schematic:
+            ((0),1,0)   ((1),0,1)
+    |-----0-----------1-----|-----0-----------1-----|
+    '''
+    dim = 1
+    
+    r0 = Rotation.identity()
+    r1 = Rotation.from_rotvec(np.pi * np.array([0,1,0]))
+    sl_rotations = [r0, r1]
+
+    spin_magnitudes = [1., 1.]
+
+    magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
+
+    magsys.add_field([0,1], [2.,0,0])
+
+    magsys.add_coupling((0,), 1, 0, heisen=1.)
+    magsys.add_coupling((1,), 0, 1, heisen=1.)
+    
+    magsys.show()
+    
+    k = [np.linspace(-1/2., 1/2., num=100)]
+    
+    ham, tau3 = magsys.bloch_ham(k)
+    
+    
+    energies = np.linalg.eigvals(tau3 @ ham)
+    energies = np.sort(energies, axis=-1)
+    
+    energies_r = energies.real
+    energies_i = energies.imag
+    
+    fig, ax = plt.subplots()
+    ax.plot(k[0], energies_r)
+    ax.plot(k[0], energies_i)
+    plt.show()
+    
+    return
+
 def test_AFM():
     dim = 2
     
@@ -121,9 +162,9 @@ def test_AFM():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.prog = "bloch_hamiltonian.py"
-#     parser.description = "Defines object for calculating Bloch Hamiltonians for various systems."
-    parser.epilog = "Example usage: python3 test_AFM.py"
+    parser.prog = "test_magnonsystem.py"
+    parser.description = "Tests for the class magnonsystem_t."
+    parser.epilog = "Example usage: python3 test_magnonsystem.py"
     args = parser.parse_args()
     
-    test_1D_AFM_GS1()
+    test_1D_AFM()

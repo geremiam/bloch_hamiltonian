@@ -6,6 +6,62 @@ from scipy.spatial.transform import Rotation
 import math
 import numbers
 
+def ham_momentum_RL(q, couplings_dic, verbose=False):
+    '''
+    Computes the Bloch Hamiltonian at q (expressed in the basis of reciprocal lattice 
+    vectors) based on coupling matrices for the different primitive translations.
+    
+    q : momentum expressed in the basis of primitive lattice vectors {b0, b1, ...}, i.e.
+        k = q[0,...] b0 + q[1,...] b1 + ...
+        The first dimension is the momentum components.
+        The output of np.meshgrid(..., indexing='ij') can be used for q.
+    
+    couplings_dic : dictionary whose keys are the primitive translations (in the form of
+                    tuples) and whose values are numpy arrays givin the coupling matrices
+                    Ex.:
+                    (n0,n1,...):np.array(square matrix), where R = n0 a0 + n1 a1 + ...
+    
+    return : Bloch Hamiltonian of the form sum_R e^{-i k . R} couplings_dic[R]
+             The dot product gives 2 pi (n0 q[0,...] + n1 q[1,...] + ...)
+    '''
+    q = np.atleast_1d(q) # Make into numpy array
+    
+    dim = q.shape[0]
+    q_shape = q.shape[1:]
+    
+    # Use an alias
+    H = couplings_dic
+    
+    # Check that H[R] and H[-R] are Hermitian conjugates
+    for R in H:
+        R_neg = tuple(-np.array(R))
+        assert np.allclose( H[R].T.conj(), H[R_neg] ), 'Oops! Looks like H[{}] and H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
+    
+    # Get the shape of the coupling matrices
+    keys_list = list( H.keys() )
+    H_shape = H[keys_list[0]].shape
+    
+    if verbose:
+        print(f'{H_shape = }')
+        print(f'{keys_list = }')
+    
+    for key in keys_list:
+        assert len(key)==dim, 'Length of keys in couplings_dic must match dimensionality. dim = {}, len({}) = {}'.format(dim, key, len(key))
+        assert H[key].shape==H_shape, 'Coupling matrices in couplings_dic must have the same shapes'
+    
+    retval = np.zeros(q_shape+H_shape, complex)
+    for R in H:
+        # Calculate dot product and phase factor
+        q_dot_R = np.tensordot( np.array(R, float), q, axes=[[0],[0]] )
+        phase = np.exp(-2.j * np.pi * q_dot_R)
+        phase = np.reshape(phase, q_shape+(1,1)) # Add two length-one trailing dimensions
+        # Add term
+        retval += H[R] * phase
+    
+    assert np.allclose(np.swapaxes(retval.conj(),-1,-2), retval), 'Bloch Hamiltonian should have been Hermitian, but is not'
+    
+    return retval
+
 # k is an array whose last dimension gives Cartesian components of momentum (of length 3)
 
 def ham_momentum(k, lattice_vectors, couplings_dic, verbose=False):
@@ -342,6 +398,14 @@ class magnonsystem_t:
         
         return H
     
+    def bloch_ham(self, k):
+        
+        H = self.coupling_matrices()
+        
+        ham = ham_momentum_RL(k, H)
+        
+        return ham, self.tau3
+    
     def show(self):
         print(f'{self.dim = }')
         print(f'{self.spin_magnitudes = }')
@@ -406,7 +470,14 @@ def test():
     
     magnonsystem.show()
     
-    magnonsystem.coupling_matrices()
+    k1 = np.linspace(-np.pi, np.pi, num=10)
+    k2 = np.linspace(-np.pi, np.pi, num=15)
+    k = np.meshgrid(k1 ,k2, indexing='ij')
+    k = np.atleast_1d(k)
+    print(f'{k.shape = }')
+    blochham, tau3 = magnonsystem.bloch_ham(k)
+    print(f'{blochham.shape = }')
+    print(f'{tau3 = }')
 
 
 
