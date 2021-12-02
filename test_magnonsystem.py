@@ -121,12 +121,9 @@ def test_1D_AFM():
     energies = np.linalg.eigvals(tau3 @ ham)
     energies = np.sort(energies, axis=-1)
     
-    energies_r = energies.real
-    energies_i = energies.imag
-    
     fig, ax = plt.subplots()
-    ax.plot(k[0], energies_r)
-    ax.plot(k[0], energies_i)
+    ax.plot(k[0], energies.real)
+    ax.plot(k[0], energies.imag)
     plt.show()
     
     return

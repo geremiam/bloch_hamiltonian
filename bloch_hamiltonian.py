@@ -5,6 +5,7 @@ import scipy
 from scipy.spatial.transform import Rotation
 import math
 import numbers
+import copy
 
 def ham_momentum_RL(q, couplings_dic, verbose=False):
     '''
@@ -327,7 +328,8 @@ class magnonsystem_t:
     
     def coupling_matrices(self, verbose=False):
         
-        h = self.m
+        # Need to make deep copy in order to avoid modified self.m
+        h = copy.deepcopy(self.m)
         
         # Adding diagonal contribution #################################################
         
