@@ -22,7 +22,7 @@ def test_1D_FM():
     
     return
 
-def test_1D_AFM():
+def test_1D_AFM_GS1():
     '''
     Schematic:
             ((0),1,0)   ((1),0,1)
@@ -42,11 +42,44 @@ def test_1D_AFM():
         
         magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
         
+        magsys.add_field([0,1], [0,0,1])
+        
         magsys.add_coupling((0,), 1, 0, heisen=1.)
         magsys.add_coupling((1,), 0, 1, heisen=1.)
         
-#         magsys.add_coupling((0,1), 0, 1, heisen=1.)
-#         magsys.add_coupling((1,1), 0, 1, heisen=1.)
+        energies.append(magsys.classical_energy())
+    
+    plt.plot(angles,energies)
+    plt.show()
+    
+    magsys.show()
+    
+    return
+
+def test_1D_AFM_GS2():
+    '''
+    Schematic:
+            ((0),1,0)   ((1),0,1)
+    |-----0-----------1-----|-----0-----------1-----|
+    '''
+    dim = 1
+    
+    angles = np.linspace(0., np.pi, num=100)
+    energies = []
+    
+    for angle in angles:
+        r0 = Rotation.from_rotvec(angle * np.array([0,1,0]))
+        r1 = Rotation.from_rotvec((np.pi-angle) * np.array([0,1,0]))
+        sl_rotations = [r0, r1]
+        
+        spin_magnitudes = [1., 1.]
+        
+        magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
+        
+        magsys.add_field([0,1], [2.,0,0])
+        
+        magsys.add_coupling((0,), 1, 0, heisen=1.)
+        magsys.add_coupling((1,), 0, 1, heisen=1.)
         
         energies.append(magsys.classical_energy())
     
@@ -93,4 +126,4 @@ if __name__ == "__main__":
     parser.epilog = "Example usage: python3 test_AFM.py"
     args = parser.parse_args()
     
-    test_1D_AFM()
+    test_1D_AFM_GS1()

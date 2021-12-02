@@ -302,7 +302,6 @@ class magnonsystem_t:
                     accumulator += - self.spin_magnitudes[sl1] * self.couplings_sym_rot[tup][2,2] / 2.
                 if sl1==sl:
                     accumulator += - self.spin_magnitudes[sl2] * self.couplings_sym_rot[tup][2,2] / 2.
-            print(f'{accumulator = }')
             h[tup_diag] += accumulator * np.eye(2)
         
         
@@ -326,12 +325,12 @@ class magnonsystem_t:
             H[R][inds] += h[tup]
         
         if verbose:
-            print('\nh =')
+            print('h =')
             for key, val in h.items():
                 print('\n{} -> \n{}'.format(key, val))
             print('*'*80)
         
-            print('\nH =')
+            print('H =')
             for key, val in H.items():
                 print('\n{} -> \n{}'.format(key, val))
             print('*'*80)
@@ -367,10 +366,10 @@ class magnonsystem_t:
         for key, val in self.m.items():
             print('\n{} -> \n{}'.format(key, val))
         print('*'*80)
-    
-        print(f'{self.classical_energy() = }')
         
         self.coupling_matrices(verbose=True)
+        
+        print(f'{self.classical_energy() = }')
         
         return
 
