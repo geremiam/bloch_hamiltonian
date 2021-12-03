@@ -194,7 +194,7 @@ class magnonsystem_t:
         tup = (R, sl1, sl2)
         
         # Refuse "self interaction" terms
-        assert tup != (tuple(np.zeros([self.dim], int)), 0, 0), 'Intra-spin terms not handled'
+        assert tup != ((0,)*self.dim, 0, 0), 'Intra-spin terms not handled'
         
         # Check that the term hasn't already been added
         assert not self.check_for_coupling(tup), 'This term or its inverse has already been added'
@@ -360,19 +360,19 @@ class magnonsystem_t:
         # Ensure h has diagonal terms for R=0
         # These do not exist at this point and so the check is redundant, but I'm still implementing it for future-proofing
         for sl in range(self.n_sl):
-            tup_diag = ( tuple(np.zeros(self.dim,int)), sl, sl ) # Tuples indexing the diagonal components
+            tup_diag = ( (0,)*self.dim, sl, sl ) # Tuples indexing the diagonal components
             if tup_diag not in h: # Create a (zero-valued) dictionary entry if necessary
                 h[tup_diag] = np.zeros([2,2], complex)
         
         for sl in self.fields_rot:
-            tup_diag = ( tuple(np.zeros(self.dim,int)), sl, sl ) # Tuples indexing the diagonal components
+            tup_diag = ( (0,)*self.dim, sl, sl ) # Tuples indexing the diagonal components
             
             # Add Zeeman field contribution
             Btilde_z = self.fields_rot[sl][2]
             h[tup_diag] += Btilde_z * np.eye(2)
         
         for sl in range(self.n_sl):
-            tup_diag = ( tuple(np.zeros(self.dim,int)), sl, sl ) # Tuples indexing the diagonal components
+            tup_diag = ( (0,)*self.dim, sl, sl ) # Tuples indexing the diagonal components
             # Add other contribution
             accumulator = 0.
             for tup in self.couplings_sym_rot:
