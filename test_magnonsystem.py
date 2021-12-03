@@ -213,9 +213,9 @@ def test_honeycomb_FM():
 
     magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
 
-    magsys.add_coupling((0,0), 0, 1, heisen=1.)
-    magsys.add_coupling((1,0), 0, 1, heisen=1.)
-    magsys.add_coupling((0,1), 0, 1, heisen=1.)
+    magsys.add_coupling((0,0), 0, 1, heisen=-1.)
+    magsys.add_coupling((1,0), 0, 1, heisen=-1.)
+    magsys.add_coupling((0,1), 0, 1, heisen=-1.)
     
     magsys.show()
     
@@ -242,6 +242,46 @@ def test_honeycomb_FM():
     
     return
 
+def test_honeycomb_AFM():
+    dim = 2
+    
+    r0 = Rotation.identity()
+    r1 = Rotation.from_rotvec(np.pi * np.array([0,1,0]))
+    sl_rotations = [r0, r1]
+
+    spin_magnitudes = [1., 1.]
+
+    magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
+
+    magsys.add_coupling((0,0), 0, 1, heisen=1.)
+    magsys.add_coupling((1,0), 0, 1, heisen=1.)
+    magsys.add_coupling((0,1), 0, 1, heisen=1.)
+    
+    magsys.show()
+    
+    ####################################################################################
+    
+    k0 = np.linspace(-np.pi, np.pi, num=600)
+    k1 = np.linspace(-np.pi, np.pi, num=600)
+    k = np.meshgrid(k0, k1, indexing='ij')
+    
+    lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
+    
+    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    
+    energies = np.linalg.eigvals(tau3 @ ham)
+    energies = np.sort(energies, axis=-1)
+    print(f'{energies.shape = }')
+    print(f'{np.amax(np.abs(energies.imag)) = }')
+    
+    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+    for i in range(energies.shape[-1]):
+        ax.plot_surface(k[0], k[1], energies.real[...,i])
+    plt.show()
+    
+    return
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.prog = 'test_magnonsystem.py'
@@ -249,4 +289,4 @@ if __name__ == '__main__':
     parser.epilog = 'Example usage: python3 test_magnonsystem.py'
     args = parser.parse_args()
     
-    test_honeycomb_FM()
+    test_honeycomb_AFM()

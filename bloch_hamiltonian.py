@@ -133,10 +133,24 @@ def ham_momentum_cart(k, lattice_vectors, couplings_dic, verbose=False):
     return output
 
 class magnonsystem_t:
-    """ Class description. 
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
+    """
+    Class description. 
     """
     def __init__(self, dim, spin_magnitudes, sl_rotations):
+        '''
+        dim : int
+            Dimensionality of the lattice.
+        
+        spin_magnitudes : list of (strictly positive) multiples of 1/2
+            The magnitude of each spin within the magnetic unit cell
+        
+        sl_rotations : list of instances of scipy.spatial.transform.rotation.Rotation (each being a single rotation)
+            Rotations setting the ordering direction of each spin in the magnetic unit 
+            cell, starting from the z direction. For example, an identity leaves the spin 
+            in the z direction, while a rotation by pi about the y direction brings the 
+            spin to the -z direction.
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
+        '''
         # Check on argument 'dim'
         assert isinstance(dim, int), '"dim" must be an int'
         # Checks on argument 'spin_magnitudes'
@@ -178,17 +192,39 @@ class magnonsystem_t:
         return
     
     def check_for_coupling(self, tup):
+        '''
+        Returns true if coupling "tup" or the reversed coupling has already been defined.
+        '''
         
-        tup_rev = (tuple(-np.array(tup[0])), tup[2], tup[1])
+        tup_rev = (tuple(-np.array(tup[0])), tup[2], tup[1]) # Coupling in reverse direction
         
+        # Check for both directions
         tup_check     = tup     in self.couplings
         tup_rev_check = tup_rev in self.couplings
         
+        # Redundant check
         assert not (tup_check and tup_rev_check), 'Intra-spin terms not expected'
         
+        # Return true if either coupling is already present
         return tup_check or tup_rev_check
     
     def add_coupling_(self, R, sl1, sl2, Jtensor):
+        '''
+        Define tensor J in the interaction S_(R, sl1)^transpose J S_(0, sl2).
+        
+        R : tuple of ints of length "dim"
+            The magnetic unit cell of the first spin, given in terms of the primitive 
+            lattice vectors.
+        
+        sl1: int in range(n_sl)
+            The sublattice index of the first spin
+        
+        sl2: int in range(n_sl)
+            The sublattice index of the second spin
+        
+        Jtensor: array of shape (3,3)
+            The interaction array between spins as shown above.
+        '''
         # Checks on argument R
         assert isinstance(R, tuple), '"R" must be a tuple'
         assert len(R)==self.dim, '"R" should have dim = {} components'.format(self.dim)
@@ -234,6 +270,36 @@ class magnonsystem_t:
         return
     
     def add_coupling(self, R, sl1, sl2, heisen=None, Jdiag=None, D=None, Gamma=None):
+        '''
+        Define tensor J in the interaction S_(R, sl1)^transpose J S_(0, sl2) using the 
+        conventional interaction terms.
+        
+        R : tuple of ints of length "dim"
+            The magnetic unit cell of the first spin, given in terms of the primitive 
+            lattice vectors.
+        
+        sl1: int in range(n_sl)
+            The sublattice index of the first spin
+        
+        sl2: int in range(n_sl)
+            The sublattice index of the second spin
+        
+        heisen: float
+            Heisenberg interaction between the spins. Conflicts with "Jdiag".
+        
+        Jdiag: array like, size (3,)
+            Diagonal elements of the tensor J. Conflicts with "heisen".
+        
+        D: array like, size (3,)
+            DM interaction between the two spins. Note that the order of the spins as 
+            shown above is important.
+        
+        Gamma: array like, size (3,)
+            Gamma interaction between the two spins.
+        
+        lattice_vectors : dim-element list of dim-element lists
+                          Specifies the primitive lattice vectors.
+        '''
         assert (heisen is None) or (Jdiag is None), 'Cannot provide both "heisen" and "Jdiag"'
         
         Jtensor = np.zeros([3,3], float)
@@ -275,6 +341,18 @@ class magnonsystem_t:
         return
     
     def add_field(self, sl_list, field):
+        '''
+        Use to set Zeeman field at the various sites in the magnetic unit cell.
+        
+        sl_list : int or list of ints
+            Sublattice index or indices at which to set the given field
+        
+        field : array like, size (3,)
+            The cartesian components of the Zeeman field at the specified sublattice(s)
+        
+        lattice_vectors : dim-element list of dim-element lists
+            Specifies the primitive lattice vectors.
+        '''
         # Make "sl_list" a list if it isn't yet
         if not hasattr(sl_list, '__iter__'):
             sl_list = [sl_list]
@@ -284,6 +362,7 @@ class magnonsystem_t:
             assert sl not in self.fields, 'Field for sl = {} has already been specified'.format(sl)
         
         field = np.atleast_1d(field) # Ensures field is a numpy array
+        assert np.isrealobj(field), 'Zeeman field must be real valued.'
         
         for sl in sl_list:
             self.fields[sl] = field
@@ -293,14 +372,21 @@ class magnonsystem_t:
         return
     
     def classical_energy(self):
+        '''
+        Computes the classical energy.
+        
+        return: The classical energy (a float).
+        '''
         accumulator = 0.
         
+        # Contribution from bilinear spin interactions
         for tup in self.couplings_sym_rot:
             sl1 = tup[1]
             sl2 = tup[2]
             Jtilde_zz = self.couplings_sym_rot[tup][2,2]
             accumulator += self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
         
+        # Contribution from Zeeman fields
         for sl in self.fields_rot:
             Btilde_z = self.fields_rot[sl][2]
             accumulator += - self.spin_magnitudes[sl] * Btilde_z
@@ -308,7 +394,16 @@ class magnonsystem_t:
         return accumulator
     
     def coupling_matrices(self, verbose=False):
+        '''
+        Computes nonzero coupling matrices between lattice cells.
         
+        return: dictionary whose keys are the primitive translations (in the form of
+                tuples) and whose values are numpy arrays givin the coupling matrices
+                Ex.:
+                (n0,n1,...):np.array(square matrix), where R = n0 a0 + n1 a1 + ... is the 
+                associated primitive translation.
+        '''
+        # Define h, as defined in docs
         # Need to make deep copy in order to avoid modified self.m
         h = copy.deepcopy(self.m)
         
@@ -348,6 +443,7 @@ class magnonsystem_t:
         
         # Create an array H for each R
         H = {}
+        # Creates all the needed keys, with zero-valued arrays as values
         for tup in h:
             R = tup[0]
             H[R] = np.zeros([2*self.n_sl, 2*self.n_sl], complex)
@@ -383,27 +479,28 @@ class magnonsystem_t:
     
     def bloch_ham(self, k, mode, lattice_vectors=None):
         '''
+        Computes Bloch coefficient matrix.
         
         k : array, (dim, ...)
             Numpy array of momenta. First dimension is the momentum component.
             The output of np.meshgrid(.., indexing='ij') can be directly used for k.
         
         mode : either "RL" or "cartesian"
-               Specifies the coordinates used to express momentum. If "RL", momentum is 
-               expressed in terms of the reciprocal lattice vectors. If "cartesian", the 
-               momentum is expressed in Cartesian coordinates, and the argument 
-               "lattice_vectors" is needed.
+            Specifies the coordinates used to express momentum. If "RL", momentum is 
+            expressed in terms of the reciprocal lattice vectors. If "cartesian", the 
+            momentum is expressed in Cartesian coordinates, and the argument 
+            "lattice_vectors" is needed.
         
         lattice_vectors : dim-element list of dim-element lists
-                          Specifies the primitive lattice vectors.
+            Specifies the primitive lattice vectors.
         
         returns:
             ham : shape (..., 2*n_sl, 2*n_sl)
-                  Bloch coefficient matrix for the given momenta.
+                Bloch coefficient matrix for the given momenta.
             
             tau3 : shape (2*n_sl, 2*n_sl)
-                   Para-unitary identity corresponding to the given coefficient matrix.
-                   The energies are given by the positive eigenvalues of tau3 @ ham.
+                Para-unitary identity corresponding to the given coefficient matrix.
+                The energies are given by the positive eigenvalues of tau3 @ ham.
         '''
         
         H = self.coupling_matrices() # Get coupling matrices
@@ -431,6 +528,9 @@ class magnonsystem_t:
         return ham, self.tau3
     
     def show(self):
+        '''
+        Prints many class attributes to help with debugging.
+        '''
         print(f'{self.dim = }')
         print(f'{self.spin_magnitudes = }')
         print(f'{self.fields = }')
@@ -458,8 +558,6 @@ class magnonsystem_t:
         self.coupling_matrices(verbose=True)
         
         print(f'{self.classical_energy() = }')
-        
-        self.coupling_matrices(verbose=True)
         
         return
 
