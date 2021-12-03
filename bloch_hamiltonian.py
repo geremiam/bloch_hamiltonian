@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from numpy import pi, sqrt, cos, sin, exp, conj, real, imag
+from numpy import sqrt
 import scipy
 from scipy.spatial.transform import Rotation
 import math
@@ -14,7 +14,7 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
     
     q : momentum expressed in the basis of primitive lattice vectors {b0, b1, ...}, i.e.
         k = q[0,...] b0 + q[1,...] b1 + ...
-        The first dimension is the momentum components.
+        The first dimension is the momentum components; other dimensions are arbitrary.
         The output of np.meshgrid(..., indexing='ij') can be used for q.
     
     couplings_dic : dictionary whose keys are the primitive translations (in the form of
@@ -47,8 +47,9 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
         print(f'{keys_list = }')
     
     for key in keys_list:
-        assert len(key)==dim, 'Length of keys in couplings_dic must match dimensionality. dim = {}, len({}) = {}'.format(dim, key, len(key))
+        assert len(key)==dim, 'Length of keys in couplings_dic and dimensionality must match. dim = {}, len({}) = {}'.format(dim, key, len(key))
         assert H[key].shape==H_shape, 'Coupling matrices in couplings_dic must have the same shapes'
+        assert H[key].ndim==2, 'Coupling matrices couplings_dic must be two dimensional'
     
     retval = np.zeros(q_shape+H_shape, complex)
     for R in H:
@@ -63,74 +64,6 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
     
     return retval
 
-def ham_momentum_cart(k, lattice_vectors, couplings_dic, verbose=False):
-    ''' 
-    Returns momentum-space hamiltonian based on coupling matrices between nearby sites.
-    Broadcasting happens with momentum k.
-    
-    k : numpy array of shape (..., dim), where dim is the number of dimensions
-    
-    lattice_vectors : n-component list of n-component lists of floats
-    
-    couplings_dic: {(i1, etc. , idim):arr}, where arr is an (n,n) array
-    
-    return: array of shape (..., n, n)
-    
-    '''
-    
-    k = np.atleast_1d(k) # Converts scalars to 1D arrays. Ensures k is a numpy array
-    
-    # Determining spatial dimension from lattice_vectors
-    dim = len(lattice_vectors)
-    for el in lattice_vectors:
-        assert len(el)==dim, 'Incorrect dimensionality of lattice vectors'
-    
-    if verbose: smartprint('dim', dim)
-    if verbose: smartprint('lattice_vectors', lattice_vectors)
-        
-    # Numerous checks to be done ########################################################
-    
-    if dim!=1:
-        assert k.shape[-1]==dim, 'Last dimension of k must be spatial dimensions'
-    
-    for key in couplings_dic.keys():
-        assert len(key)==dim, 'Incorrect dimensionality of unit-cell indices in couplings_dic'
-        
-        key_neg = tuple(-np.array(key))
-        assert np.allclose( couplings_dic[key].T.conj(), couplings_dic[key_neg] ), 'Oops! Looks like couplings_dic[{}] and couplings_dic[{}] are not Hermitian conjugates, though they should be.'.format(key,key_neg)
-    
-    values_list = list(couplings_dic.values())
-    for i in range(len(values_list)):
-        assert values_list[i].shape==values_list[0].shape, 'Matrices in "couplings_dic" should all have the same shape'
-        assert len(values_list[i].shape)==2, 'Matrices in "couplings_dic" should be two-dimensional'
-        matrix_shape = values_list[i].shape
-    
-    # Actual calculation ###############################################################
-    
-    if dim==1: # Add a last dimension to k if dim==1
-        k = k[...,None]
-    if verbose: smartprint('k.shape',k.shape)
-    
-    output = np.zeros(k.shape[:-1] + matrix_shape, complex) # Shape of output matrix
-    if verbose: smartprint('output.shape',output.shape)
-    
-    for key in couplings_dic:
-        R = np.dot( np.array(lattice_vectors), np.atleast_1d(np.array(key)) )
-        if verbose: smartprint('R',R)
-        
-        dotprod = np.dot(k, R)
-        if verbose: smartprint('dotprod.shape', dotprod.shape)
-        
-        contribution = np.exp(1.j*dotprod)[...,None,None] * couplings_dic[key]
-        
-        if not np.any(np.array(key)): # If the indices are all zero
-            output += contribution
-        else:
-            output += contribution + np.swapaxes(contribution, -1, -2).conj()
-    
-    output = np.squeeze(output) # Gets rid of length-one dimensions (specifically, the momentum)
-    
-    return output
 
 class magnonsystem_t:
     """
@@ -595,7 +528,7 @@ def test():
     dim = 2
     
     r0 = Rotation.identity()
-    r1 = Rotation.from_rotvec(pi * np.array([0,1,0]))
+    r1 = Rotation.from_rotvec(np.pi * np.array([0,1,0]))
     sl_rotations = [r0, r1]
     
     spin_magnitudes = [0.5, 0.5]
