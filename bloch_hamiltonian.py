@@ -63,8 +63,6 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
     
     return retval
 
-# k is an array whose last dimension gives Cartesian components of momentum (of length 3)
-
 def ham_momentum_cart(k, lattice_vectors, couplings_dic, verbose=False):
     ''' 
     Returns momentum-space hamiltonian based on coupling matrices between nearby sites.
@@ -383,19 +381,52 @@ class magnonsystem_t:
         
         return H
     
-    def bloch_ham(self, k):
+    def bloch_ham(self, k, mode, lattice_vectors=None):
+        '''
         
-        H = self.coupling_matrices()
+        k : array, (dim, ...)
+            Numpy array of momenta. First dimension is the momentum component.
+            The output of np.meshgrid(.., indexing='ij') can be directly used for k.
         
-        ham = ham_momentum_RL(k, H)
+        mode : either "RL" or "cartesian"
+               Specifies the coordinates used to express momentum. If "RL", momentum is 
+               expressed in terms of the reciprocal lattice vectors. If "cartesian", the 
+               momentum is expressed in Cartesian coordinates, and the argument 
+               "lattice_vectors" is needed.
         
-        return ham, self.tau3
-    
-    def bloch_ham_cart(self, k, lattice_vectors):
+        lattice_vectors : dim-element list of dim-element lists
+                          Specifies the primitive lattice vectors.
         
-        H = self.coupling_matrices()
+        returns:
+            ham : shape (..., 2*n_sl, 2*n_sl)
+                  Bloch coefficient matrix for the given momenta.
+            
+            tau3 : shape (2*n_sl, 2*n_sl)
+                   Para-unitary identity corresponding to the given coefficient matrix.
+                   The energies are given by the positive eigenvalues of tau3 @ ham.
+        '''
         
-        ham = ham_momentum_cart(k, lattice_vectors, H)
+        H = self.coupling_matrices() # Get coupling matrices
+        
+        # Identify mode
+        modes = ['RL', 'cartesian']
+        assert mode in modes, 'mode "{}" is not valid'.format(mode)
+        
+        if mode==modes[0]: # Mode 'RL'
+            q = k
+        elif mode==modes[1]: # Mode 'cartesian'
+            assert lattice_vectors is not None, 'In mode "cartesian", argument lattice_vectors is needed'
+            assert len(lattice_vectors)==self.dim, 'Length of lattice_vectors must match spatial dimension'
+            for el in lattice_vectors:
+                assert len(el)==self.dim, 'Length of individual components of lattice_vectors must match spatial dimension'
+                for i in el:
+                    assert isinstance(i, numbers.Real), 'Components of lattice vectors must be real valued'
+            
+            lattice_vectors = np.atleast_2d(lattice_vectors) # Turn into numpy array
+            # Use the lattice vectors to do the basis transformation
+            q = (1./(2.*np.pi)) * np.tensordot( lattice_vectors, k, axes=1 )
+        
+        ham = ham_momentum_RL(q, H) # Get the Bloch coefficient matrix
         
         return ham, self.tau3
     
@@ -486,8 +517,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.prog = "bloch_hamiltonian.py"
     parser.description = "Defines object for calculating Bloch Hamiltonians for various systems."
-#     parser.epilog = "Example usage: python3 Haldane_model.py"
-#     parser.add_argument("--processes", type=int, help="Number of processes to use in computation.")
     args = parser.parse_args()
     
     test()
