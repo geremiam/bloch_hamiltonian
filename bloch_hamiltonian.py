@@ -357,23 +357,20 @@ class magnonsystem_t:
         
         # Adding diagonal contribution #################################################
         
-        # Ensure h has diagonal terms for R=0
-        # These do not exist at this point and so the check is redundant, but I'm still implementing it for future-proofing
-        for sl in range(self.n_sl):
-            tup_diag = ( (0,)*self.dim, sl, sl ) # Tuples indexing the diagonal components
-            if tup_diag not in h: # Create a (zero-valued) dictionary entry if necessary
-                h[tup_diag] = np.zeros([2,2], complex)
-        
-        for sl in self.fields_rot:
+        for sl in range(self.n_sl): # Cycle through sublattices
             tup_diag = ( (0,)*self.dim, sl, sl ) # Tuples indexing the diagonal components
             
+            # Ensure h has diagonal terms for R=0
+            # These do not exist at this point and so the check is redundant, but I'm still implementing it for future-proofing
+            if tup_diag not in h: # Create a (zero-valued) dictionary entry if necessary
+                h[tup_diag] = np.zeros([2,2], complex)
+            
             # Add Zeeman field contribution
-            Btilde_z = self.fields_rot[sl][2]
-            h[tup_diag] += Btilde_z * np.eye(2)
-        
-        for sl in range(self.n_sl):
-            tup_diag = ( (0,)*self.dim, sl, sl ) # Tuples indexing the diagonal components
-            # Add other contribution
+            if sl in self.fields_rot:
+                Btilde_z = self.fields_rot[sl][2]
+                h[tup_diag] += Btilde_z * np.eye(2)
+            
+            # Add other contribution (from the zz components of couplings_sym_rot)
             accumulator = 0.
             for tup in self.couplings_sym_rot:
                 R = tup[0]
@@ -522,6 +519,7 @@ class magnonsystem_t:
         
         return
 
+
 def test():
     np.set_printoptions(linewidth=250)
     
@@ -563,8 +561,6 @@ def test():
     lattice_vectors = [[1,0],[0,1]]
     blochham, tau3 = magnonsystem.bloch_ham(k, 'cartesian', lattice_vectors=lattice_vectors)
     print(f'{blochham.shape = }')
-    
-    
 
 
 
