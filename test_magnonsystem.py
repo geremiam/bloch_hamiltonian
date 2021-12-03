@@ -19,16 +19,18 @@ def test_1D_FM():
     
     magsys.show()
     
-    k = [np.linspace(-1/2., 1/2., num=500)]
     
-    ham, tau3 = magsys.bloch_ham(k)
+    k = np.linspace(-1/2., 1/2., num=500)
+    
+    ham, tau3 = magsys.bloch_ham(k, 'RL')
+    print(f'{ham.shape = }')
     
     energies = np.linalg.eigvals(tau3 @ ham)
     energies = np.sort(energies, axis=-1)
     
     fig, ax = plt.subplots()
-    ax.plot(k[0], energies.real)
-    ax.plot(k[0], energies.imag)
+    ax.plot(k, energies.real)
+    ax.plot(k, energies.imag)
     plt.show()
     
     return
@@ -124,16 +126,17 @@ def test_1D_AFM():
     
     magsys.show()
     
-    k = [np.linspace(-1/2., 1/2., num=500)]
     
-    ham, tau3 = magsys.bloch_ham(k)
+    k = np.linspace(-1/2., 1/2., num=500)
+    
+    ham, tau3 = magsys.bloch_ham(k, 'RL')
     
     energies = np.linalg.eigvals(tau3 @ ham)
     energies = np.sort(energies, axis=-1)
     
     fig, ax = plt.subplots()
-    ax.plot(k[0], energies.real)
-    ax.plot(k[0], energies.imag)
+    ax.plot(k, energies.real)
+    ax.plot(k, energies.imag)
     plt.show()
     
     return

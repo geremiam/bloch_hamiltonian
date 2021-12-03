@@ -134,7 +134,22 @@ def ham_momentum_cart(k, lattice_vectors, couplings_dic, verbose=False):
 
 class magnonsystem_t:
     """
-    Class description. 
+    Class for carrying out linear spin wave calculations in translationally invariant
+    systems. Also computes classical ground-state energy.
+    
+    Lattice dimensionality, spin magnitudes, and spin directions are specified at 
+    construction.
+    
+    Couplings between spins are specified using either method add_coupling() or 
+    method add_coupling_(). (For now, limited to bilinear spin interactions.)
+    
+    Zeeman field at each spin can be specified using method add_field().
+    
+    Classical ground-state energy is given by method classical_energy().
+    
+    Bloch coefficient matrix is given my method bloch_ham().
+    
+    Method show() prints many class attributes.
     """
     def __init__(self, dim, spin_magnitudes, sl_rotations):
         '''
@@ -484,6 +499,7 @@ class magnonsystem_t:
         k : array, (dim, ...)
             Numpy array of momenta. First dimension is the momentum component.
             The output of np.meshgrid(.., indexing='ij') can be directly used for k.
+            For 1D systems, the length-one "dim" axis can be omitted.
         
         mode : either "RL" or "cartesian"
             Specifies the coordinates used to express momentum. If "RL", momentum is 
@@ -503,7 +519,15 @@ class magnonsystem_t:
                 The energies are given by the positive eigenvalues of tau3 @ ham.
         '''
         
-        H = self.coupling_matrices() # Get coupling matrices
+        # Checks on argument "k"
+        if self.dim==1:
+            k = np.atleast_2d(k)
+        else:
+            k = np.atleast_1d(k)
+            if k.ndim==1:
+                k = k[..., None]
+        
+        assert k.shape[0]==self.dim, 'First dimension of k must match the dimensionality'
         
         # Identify mode
         modes = ['RL', 'cartesian']
@@ -520,10 +544,14 @@ class magnonsystem_t:
                     assert isinstance(i, numbers.Real), 'Components of lattice vectors must be real valued'
             
             lattice_vectors = np.atleast_2d(lattice_vectors) # Turn into numpy array
-            # Use the lattice vectors to do the basis transformation
+            # Use the lattice vectors to do the basis transformation to the RL basis
             q = (1./(2.*np.pi)) * np.tensordot( lattice_vectors, k, axes=1 )
         
+        H = self.coupling_matrices() # Get coupling matrices
+        
         ham = ham_momentum_RL(q, H) # Get the Bloch coefficient matrix
+        
+        ham = np.squeeze(ham) # Gets rid of length-one dimensions
         
         return ham, self.tau3
     
@@ -595,17 +623,13 @@ def test():
     k1 = np.linspace(-np.pi, np.pi, num=10)
     k2 = np.linspace(-np.pi, np.pi, num=15)
     k = np.meshgrid(k1 ,k2, indexing='ij')
-    k = np.atleast_1d(k)
-    print(f'{k.shape = }')
-    blochham, tau3 = magnonsystem.bloch_ham(k)
-    print(f'{blochham.shape = }')
-    print(f'{tau3 = }')
     
+    blochham, tau3 = magnonsystem.bloch_ham(k, 'RL')
+    print(f'{blochham.shape = }')
     
     lattice_vectors = [[1,0],[0,1]]
-    k = np.moveaxis(k, 0, -1)
-    print(f'{k.shape = }')
-    blochham, tau3 = magnonsystem.bloch_ham_cart(k, lattice_vectors)
+    blochham, tau3 = magnonsystem.bloch_ham(k, 'cartesian', lattice_vectors=lattice_vectors)
+    print(f'{blochham.shape = }')
     
     
 
