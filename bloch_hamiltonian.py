@@ -5,7 +5,6 @@ import scipy
 from scipy.spatial.transform import Rotation
 import math
 import numbers
-import copy
 
 def ham_momentum_RL(q, couplings_dic, verbose=False):
     '''
@@ -352,8 +351,12 @@ class magnonsystem_t:
                 associated primitive translation.
         '''
         # Define h, as defined in docs
-        # Need to make deep copy in order to avoid modified self.m
-        h = copy.deepcopy(self.m)
+        h = {}
+        # One contribution to h comes from m, up to a factor involving spin magnitudes
+        for key in self.m:
+            sl1 = key[1]
+            sl2 = key[2]
+            h[key] = np.sqrt(self.spin_magnitudes[sl1] * self.spin_magnitudes[sl2]) * self.m[key]
         
         # Adding diagonal contribution #################################################
         
