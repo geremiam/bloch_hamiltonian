@@ -77,9 +77,9 @@ class magnonsystem_t:
     
     Zeeman field at each spin can be specified using method add_field().
     
-    Classical ground-state energy is given by method classical_energy().
+    Classical ground-state energy (order S^2 terms) is given by method classical_energy().
     
-    Bloch coefficient matrix is given my method bloch_ham().
+    Bloch coefficient matrix (order S^1 terms) is given my method bloch_ham().
     
     Method show() prints many class attributes.
     """
@@ -157,7 +157,8 @@ class magnonsystem_t:
     
     def add_coupling_(self, R, sl1, sl2, Jtensor):
         '''
-        Define tensor J in the interaction S_(R, sl1)^transpose J S_(0, sl2).
+        Define tensor J in the interaction S_(R, sl1)^transpose J S_(0, sl2). Will refuse 
+        if a coupling has already been defined for the given bond (in either direction).
         
         R : tuple of ints of length "dim"
             The magnetic unit cell of the first spin, given in terms of the primitive 
@@ -219,7 +220,8 @@ class magnonsystem_t:
     def add_coupling(self, R, sl1, sl2, heisen=None, Jdiag=None, D=None, Gamma=None):
         '''
         Define tensor J in the interaction S_(R, sl1)^transpose J S_(0, sl2) using the 
-        conventional interaction terms.
+        conventional interaction terms. Will refuse if a coupling has already been 
+        defined for the given bond (in either direction).
         
         R : tuple of ints of length "dim"
             The magnetic unit cell of the first spin, given in terms of the primitive 
@@ -320,7 +322,7 @@ class magnonsystem_t:
     
     def classical_energy(self):
         '''
-        Computes the classical energy.
+        Computes the classical energy (order S^2 terms).
         
         return: The classical energy (a float).
         '''
@@ -342,7 +344,7 @@ class magnonsystem_t:
     
     def coupling_matrices(self, verbose=False):
         '''
-        Computes nonzero coupling matrices between lattice cells.
+        Computes nonzero coupling matrices between lattice cells (order S^1 terms).
         
         return: dictionary whose keys are the primitive translations (in the form of
                 tuples) and whose values are numpy arrays givin the coupling matrices
@@ -427,7 +429,7 @@ class magnonsystem_t:
     
     def bloch_ham(self, k, mode, lattice_vectors=None):
         '''
-        Computes Bloch coefficient matrix.
+        Computes Bloch coefficient matrix (order S^1 terms).
         
         k : array, (dim, ...)
             Numpy array of momenta. First dimension is the momentum component.

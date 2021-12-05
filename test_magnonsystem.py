@@ -223,12 +223,23 @@ def test_honeycomb_FM():
     magsys.show()
     
     ####################################################################################
+    lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
+    print('\n*** Energy at a single momentum ***')
+    k = [1.3, 1.]
+    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    print(f'{magsys.spin_magnitudes = }')
+    print(f'{k = }')
+    print(f'{tau3.shape = }')
+    print(f'{ham.shape = }')
+    print(f'{(tau3 @ ham).shape = }')
+    energy = np.linalg.eigvals(tau3 @ ham)
+    print(f'{energy = }')
+    
+    print('\n*** Plotting band structure ***')
     k0 = np.linspace(-np.pi, np.pi, num=600)
     k1 = np.linspace(-np.pi, np.pi, num=600)
     k = np.meshgrid(k0, k1, indexing='ij')
-    
-    lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     
@@ -252,7 +263,7 @@ def test_honeycomb_AFM():
     r1 = Rotation.from_rotvec(np.pi * np.array([0,1,0]))
     sl_rotations = [r0, r1]
 
-    spin_magnitudes = [1., 1.]
+    spin_magnitudes = [2., 3.]
 
     magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
 
@@ -263,12 +274,23 @@ def test_honeycomb_AFM():
     magsys.show()
     
     ####################################################################################
+    lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
+    print('\n*** Energy at a single momentum ***')
+    k = [1., 1.3]
+    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    print(f'{magsys.spin_magnitudes = }')
+    print(f'{k = }')
+    print(f'{tau3.shape = }')
+    print(f'{ham.shape = }')
+    print(f'{(tau3 @ ham).shape = }')
+    energy = np.linalg.eigvals(tau3 @ ham)
+    print(f'{energy = }')
+    
+    print('\n*** Plotting band structure ***')
     k0 = np.linspace(-np.pi, np.pi, num=600)
     k1 = np.linspace(-np.pi, np.pi, num=600)
     k = np.meshgrid(k0, k1, indexing='ij')
-    
-    lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     
@@ -291,5 +313,5 @@ if __name__ == '__main__':
     parser.description = 'Tests for the class magnonsystem_t.'
     parser.epilog = 'Example usage: python3 test_magnonsystem.py'
     args = parser.parse_args()
-    
+    np.set_printoptions(linewidth=250)
     test_honeycomb_AFM()
