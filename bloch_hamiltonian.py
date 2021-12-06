@@ -204,8 +204,8 @@ class magnonsystem_t:
         
         # Symmetrize couplings, such that Jtensor_ji = Jtensor_ij^T
         tup_rev = (tuple(-np.array(R)), sl2, sl1)
-        self.couplings_sym[tup]     = Jtensor   / 2.
-        self.couplings_sym[tup_rev] = Jtensor.T / 2.
+        self.couplings_sym[tup]     = Jtensor
+        self.couplings_sym[tup_rev] = Jtensor.T
         
         for t in [tup, tup_rev]:
             # Compute the couplings as seen in the local bases
@@ -322,9 +322,9 @@ class magnonsystem_t:
     
     def classical_energy(self):
         '''
-        Computes the classical energy (order S^2 terms).
+        Computes the classical energy per magnetic unit cell (order S^2 terms).
         
-        return: The classical energy (a float).
+        return: The classical energy per magnetic unit cell (a float).
         '''
         accumulator = 0.
         
@@ -333,7 +333,7 @@ class magnonsystem_t:
             sl1 = tup[1]
             sl2 = tup[2]
             Jtilde_zz = self.couplings_sym_rot[tup][2,2]
-            accumulator += self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
+            accumulator += 0.5 * self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
         
         # Contribution from Zeeman fields
         for sl in self.fields_rot:

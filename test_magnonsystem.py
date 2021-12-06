@@ -297,7 +297,7 @@ def test_honeycomb_FM():
     r0 = Rotation.identity()
     sl_rotations = [r0, r0]
 
-    spin_magnitudes = [1., 1.]
+    spin_magnitudes = [0.5, 1.]
 
     magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
 
@@ -348,7 +348,7 @@ def test_honeycomb_AFM():
     r1 = Rotation.from_rotvec(np.pi * np.array([0,1,0]))
     sl_rotations = [r0, r1]
 
-    spin_magnitudes = [2., 3.]
+    spin_magnitudes = [1., 1.5]
 
     magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
 
@@ -399,4 +399,4 @@ if __name__ == '__main__':
     parser.epilog = 'Example usage: python3 test_magnonsystem.py'
     args = parser.parse_args()
     np.set_printoptions(linewidth=250)
-    test_2D_AFM()
+    test_honeycomb_FM()
