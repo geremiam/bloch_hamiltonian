@@ -241,10 +241,13 @@ class magnonsystem_t:
         
         D: array like, size (3,)
             DM interaction between the two spins. Note that the order of the spins as 
-            shown above is important.
+            shown above is important. Gives the following: tensor components :
+            Jtensor[beta,gamma] = epsilon[alpha,beta,gamma] D[alpha].
         
         Gamma: array like, size (3,)
-            Gamma interaction between the two spins.
+            Gamma interaction between the two spins. Gives the following: tensor 
+            components :
+            Jtensor[beta,gamma] = |epsilon[alpha,beta,gamma]| Gamma[alpha].
         
         lattice_vectors : dim-element list of dim-element lists
                           Specifies the primitive lattice vectors.

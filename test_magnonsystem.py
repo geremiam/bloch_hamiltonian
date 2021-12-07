@@ -341,6 +341,69 @@ def test_honeycomb_FM():
     
     return
 
+def test_honeycomb_FM_DM():
+    dim = 2
+    
+    r0 = Rotation.identity()
+    sl_rotations = [r0, r0]
+
+    spin_magnitudes = [1., 1.]
+
+    magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations)
+    
+    J = -1.
+    magsys.add_coupling((0,0), 0, 1, heisen=J)
+    magsys.add_coupling((1,0), 0, 1, heisen=J)
+    magsys.add_coupling((0,1), 0, 1, heisen=J)
+    
+    DM = 0.1
+    Jp = -0.3
+    
+    # The "directions" for the DM interaction have the lattice's inversion and threefold rotation
+    magsys.add_coupling((-1,0), 0, 0, heisen=Jp, D=[0,0,DM])
+    magsys.add_coupling((0,1),  0, 0, heisen=Jp, D=[0,0,DM])
+    magsys.add_coupling((1,-1), 0, 0, heisen=Jp, D=[0,0,DM])
+
+    magsys.add_coupling((1,0),  1, 1, heisen=Jp, D=[0,0,DM])
+    magsys.add_coupling((0,-1), 1, 1, heisen=Jp, D=[0,0,DM])
+    magsys.add_coupling((-1,1), 1, 1, heisen=Jp, D=[0,0,DM])
+    
+    magsys.show()
+    
+    ####################################################################################
+    lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
+    
+    print('\n*** Energy at a single momentum ***')
+    k = [1.3, 1.0]
+    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    print(f'{magsys.spin_magnitudes = }')
+    print(f'{k = }')
+    print(f'{tau3.shape = }')
+    print('ham =\n{}'.format(ham))
+    print(f'{(tau3 @ ham).shape = }')
+    energy = np.linalg.eigvals(tau3 @ ham)
+    print(f'{energy = }')
+    
+    print('\n*** Plotting band structure ***')
+    k0 = np.linspace(-np.pi, np.pi, num=600)
+    k1 = np.linspace(-np.pi, np.pi, num=600)
+    k = np.meshgrid(k0, k1, indexing='ij')
+    
+    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    
+    energies = np.linalg.eigvals(tau3 @ ham)
+    energies = np.sort(energies, axis=-1)
+    print(f'{energies.shape = }')
+    print(f'{np.amax(np.abs(energies.imag)) = }')
+    
+    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+    for i in range(energies.shape[-1]):
+        ax.plot_surface(k[0], k[1], energies.real[...,i])
+    plt.show()
+    
+    return
+
 def test_honeycomb_AFM():
     dim = 2
     
@@ -399,4 +462,4 @@ if __name__ == '__main__':
     parser.epilog = 'Example usage: python3 test_magnonsystem.py'
     args = parser.parse_args()
     np.set_printoptions(linewidth=250)
-    test_honeycomb_FM()
+    test_honeycomb_FM_DM()
