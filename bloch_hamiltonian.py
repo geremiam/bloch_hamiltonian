@@ -83,7 +83,7 @@ class magnonsystem_t:
     
     Method show() prints many class attributes.
     """
-    def __init__(self, dim, spin_magnitudes, sl_rotations):
+    def __init__(self, dim, spin_magnitudes, sl_rotations, verbose=False):
         '''
         dim : int
             Dimensionality of the lattice.
@@ -97,6 +97,10 @@ class magnonsystem_t:
             in the z direction, while a rotation by pi about the y direction brings the 
             spin to the -z direction.
             https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html#scipy.spatial.transform.Rotation
+        
+        verbose: boolean (default False)
+            If True, prints the magnitude and classical direction of each spin in the 
+            magnetic unit cell.
         '''
         # Check on argument 'dim'
         assert isinstance(dim, int), '"dim" must be an int'
@@ -135,6 +139,16 @@ class magnonsystem_t:
         self.couplings_sym_rot = {} # Dictionary in which to store the couplings in the local basis
         self.cal_M = {} # Dictionary in which to store the couplings in the "ladder basis"
         self.m = {} # Dictionary in which to store subblocks of the above
+        
+        if verbose:
+            print('Spin magnitudes and directions:')
+            for sl in range(self.n_sl):
+                print()
+                print('\tSublattice {}'.format(sl))
+                print('\tspin magnitude: {}'.format(self.spin_magnitudes[sl]))
+                spin_dir = self.sl_rotations[sl].apply([0., 0., 1.])
+                print('\tspin direction: {}'.format(spin_dir))
+            print('*'*80)
         
         return
     
