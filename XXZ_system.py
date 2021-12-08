@@ -83,15 +83,30 @@ def XXZ_3D():
 
     magsys = bh.magnonsystem_t(dim, spin_magnitudes, sl_rotations, verbose=True)
     
-    J1 = -1.
-    alpha1 = 0.5
-    magsys.add_coupling((0,0,0), 0, 1, Jdiag=[J1, J1, alpha1*J1])
-    magsys.add_coupling((1,0,0), 0, 1, Jdiag=[J1, J1, alpha1*J1])
-    magsys.add_coupling((0,1,0), 0, 1, Jdiag=[J1, J1, alpha1*J1])
-    magsys.add_coupling((0,0,0), 2, 3, Jdiag=[J1, J1, alpha1*J1])
-    magsys.add_coupling((1,0,0), 2, 3, Jdiag=[J1, J1, alpha1*J1])
-    magsys.add_coupling((0,1,0), 2, 3, Jdiag=[J1, J1, alpha1*J1])
+    J1E = -1.
+    alpha1E = 0.4
+    magsys.add_coupling((0,0,0), 0, 1, Jdiag=[J1E, J1E, alpha1E*J1E])
+    magsys.add_coupling((1,0,0), 0, 1, Jdiag=[J1E, J1E, alpha1E*J1E])
+    magsys.add_coupling((0,1,0), 0, 1, Jdiag=[J1E, J1E, alpha1E*J1E])
+    J1O = -1.
+    alpha1O = 0.4
+    magsys.add_coupling((0,0,0), 2, 3, Jdiag=[J1O, J1O, alpha1O*J1O])
+    magsys.add_coupling((1,0,0), 2, 3, Jdiag=[J1O, J1O, alpha1O*J1O])
+    magsys.add_coupling((0,1,0), 2, 3, Jdiag=[J1O, J1O, alpha1O*J1O])
     
+    J3 = 0.2
+    alpha3 = 0.3
+    magsys.add_coupling((0,0,0), 3, 0, Jdiag=[J3, J3, alpha3*J3])
+    magsys.add_coupling((0,0,1), 1, 2, Jdiag=[J3, J3, alpha3*J3])
+    
+    J9aa = 0.15
+    alpha9aa = 1.
+    magsys.add_coupling((1,1,1), 2, 0, Jdiag=[J9aa, J9aa, alpha9aa*J9aa])
+    magsys.add_coupling((1,1,2), 0, 2, Jdiag=[J9aa, J9aa, alpha9aa*J9aa])
+    J9bb = 0.25
+    alpha9bb = 1.
+    magsys.add_coupling((1,1,1), 3, 1, Jdiag=[J9bb, J9bb, alpha9bb*J9bb])
+    magsys.add_coupling((1,1,2), 1, 3, Jdiag=[J9bb, J9bb, alpha9bb*J9bb])
     
     DM = [0.35, 0., 0.]
     # The "directions" for the DM interaction have the lattice's inversion and threefold rotation
@@ -106,20 +121,20 @@ def XXZ_3D():
         magsys.add_coupling((0,-1,0), sl, sl, D=C3.apply(DM, inverse=False))
         magsys.add_coupling((1, 0,0), sl, sl, D=C3.apply(DM, inverse=True))
     
-    magsys.show()
+#     magsys.show()
     
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2., 0.], [3./2., np.sqrt(3.)/2., 0.], [-2., 0., 2.] ]
     
     print('\n*** Energy at a single momentum ***')
-    k = [1.3, 1.0, 0.]
+    k = [0.1, 0.2, 0.3]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     print(f'{magsys.spin_magnitudes = }')
     print(f'{k = }')
     print(f'{tau3.shape = }')
-    print('ham =\n{}'.format(ham))
+    print(f'{ham.shape = }')
     print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     print(f'{energy = }')
         
     return
