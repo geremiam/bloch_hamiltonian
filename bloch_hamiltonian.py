@@ -146,11 +146,23 @@ class magnonsystem_t:
                 print()
                 print('\tSublattice {}'.format(sl))
                 print('\tspin magnitude: {}'.format(self.spin_magnitudes[sl]))
-                spin_dir = self.sl_rotations[sl].apply([0., 0., 1.])
+                spin_dir = self.spin_dir(sl)
                 print('\tspin direction: {}'.format(spin_dir))
             print('*'*80)
         
         return
+    
+    def spin_dir(self, sl):
+        '''
+        Returns the classical spin direction for the given sublattice.
+        
+        sl: element of range(n_sl)
+            A sublattice index
+        
+        return: array of shape (3,)
+            Unit vector giving the spin direction on sublattice "sl"
+        '''
+        return self.sl_rotations[sl].apply([0., 0., 1.])
     
     def check_for_coupling(self, tup):
         '''
@@ -271,7 +283,7 @@ class magnonsystem_t:
         Jtensor = np.zeros([3,3], float)
         
         if heisen is not None:
-            assert isinstance(heisen, float), ''
+            assert isinstance(heisen, numbers.Real), '"heisen" should be a real number type'
             Jtensor += heisen * np.eye(3)
             
         if Jdiag is not None:
