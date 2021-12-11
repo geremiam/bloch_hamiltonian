@@ -4,8 +4,21 @@ import bloch_hamiltonian as bh
 from scipy.spatial.transform import Rotation
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import termcolor as tc
 
-def test_1D_FM():
+def compare(arr1, arr2, tol):
+    assert tol > 0., 'The argument tol must be strictly positive'
+    diff = np.amax(np.abs(arr1 - arr2))
+    
+    if diff<=tol:
+        tc.cprint('Passed: diff = {}'.format(diff), 'green')
+    else:
+        tc.cprint('Failed: diff = {}'.format(diff), 'red', attrs=['bold'])
+    
+    return diff
+
+def test_1D_FM(verbose=False, plot=False):
+    print('\n1D Heisenberg ferromagnet')
     
     dim = 1
     sl_rotations = [Rotation.identity()]
@@ -15,34 +28,40 @@ def test_1D_FM():
 
     magsys.add_coupling((1,), 0, 0, heisen=-1.)
     
-    print( 'Classical energy: {}'.format(magsys.classical_energy()) )
+    if verbose>1:
+        magsys.show()
     
-    magsys.show()
-    
-    print('\n*** Energy at a single momentum ***')
     k = [0.1]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print(f'{ham.shape = }')
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
-    k = np.linspace(-1/2., 1/2., num=500)
+    energy_expected = np.array([-0.38196601+0.j,  0.38196601+0.j])
+    compare(energy, energy_expected, 3.e-9)
     
-    ham, tau3 = magsys.bloch_ham(k, 'RL')
-    print(f'{ham.shape = }')
+    if verbose:
+        print( 'Classical energy: {}'.format(magsys.classical_energy()) )
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print(f'{ham.shape = }')
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
+    if plot:
+        print('\n*** Plotting band structure ***')
+        k = np.linspace(-1/2., 1/2., num=500)
     
-    fig, ax = plt.subplots()
-    ax.plot(k, energies.real)
-    ax.plot(k, energies.imag)
-    plt.show()
+        ham, tau3 = magsys.bloch_ham(k, 'RL')
+        print(f'{ham.shape = }')
+    
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+    
+        fig, ax = plt.subplots()
+        ax.plot(k, energies.real)
+        ax.plot(k, energies.imag)
+        plt.show()
     
     return
 
@@ -114,12 +133,13 @@ def test_1D_AFM_GS2():
     
     return
 
-def test_1D_AFM():
+def test_1D_AFM(verbose=False, plot=False):
     '''
     Schematic:
             ((0),1,0)   ((1),0,1)
     |-----0-----------1-----|-----0-----------1-----|
     '''
+    print('\n1D Heisenberg antiferromagnet')
     dim = 1
     
     r0 = Rotation.identity()
@@ -135,36 +155,43 @@ def test_1D_AFM():
     magsys.add_coupling((0,), 1, 0, heisen=1.)
     magsys.add_coupling((1,), 0, 1, heisen=1.)
     
-    magsys.show()
+    if verbose>1:
+        magsys.show()
     
-    print('\n*** Energy at a single momentum ***')
     k = [0.1]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print(f'{ham.shape = }')
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
-    k = np.linspace(-1/2., 1/2., num=500)
+    energy_expected = np.array([-0.61803399+0.j, -0.61803399+0.j,  0.61803399+0.j,  0.61803399+0.j])
+    compare(energy, energy_expected, 3.e-9)
     
-    ham, tau3 = magsys.bloch_ham(k, 'RL')
+    if verbose:
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print(f'{ham.shape = }')
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
+    if plot:
+        print('\n*** Plotting band structure ***')
+        k = np.linspace(-1/2., 1/2., num=500)
     
-    fig, ax = plt.subplots()
-    ax.plot(k, energies.real)
-    ax.plot(k, energies.imag)
-    plt.show()
+        ham, tau3 = magsys.bloch_ham(k, 'RL')
+    
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+    
+        fig, ax = plt.subplots()
+        ax.plot(k, energies.real)
+        ax.plot(k, energies.imag)
+        plt.show()
     
     return
 
-def test_2D_FM():
-    
+def test_2D_FM(verbose=False, plot=False):
+    print('\n2D Heisenberg ferromagnet')
     dim = 2
     # One spin per magnetic unit cell
     sl_rotations = [Rotation.identity()]
@@ -175,38 +202,43 @@ def test_2D_FM():
     magsys.add_coupling((1,0), 0, 0, heisen=-1.)
     magsys.add_coupling((0,1), 0, 0, heisen=-1.)
     
-    print( 'Classical energy: {}'.format(magsys.classical_energy()) )
+    if verbose>1:
+        magsys.show()
     
-    magsys.show()
-    
-    print('\n*** Energy at a single momentum ***')
     k = [0.12, 0.23]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print(f'{ham.shape = }')
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
-    k0 = np.linspace(-0.5, 0.5, num=200)
-    k1 = np.linspace(-0.5, 0.5, num=300)
-    k = np.meshgrid(k0, k1, indexing='ij')
+    energy_expected = np.array([-2.29139628+0.j,  2.29139628+0.j])
+    compare(energy, energy_expected, 3.e-9)
     
-    ham, tau3 = magsys.bloch_ham(k, mode='RL')
-    print(f'{ham.shape = }')
+    if verbose:
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print(f'{ham.shape = }')
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
-    print(f'{energies.shape = }')
+    if plot:
+        print('\n*** Plotting band structure ***')
+        k0 = np.linspace(-0.5, 0.5, num=200)
+        k1 = np.linspace(-0.5, 0.5, num=300)
+        k = np.meshgrid(k0, k1, indexing='ij')
     
-    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+        ham, tau3 = magsys.bloch_ham(k, mode='RL')
+        print(f'{ham.shape = }')
     
-    for i in range(energies.shape[-1]):
-        ax.plot_surface(k[0], k[1], energies.real[...,i])
-    plt.show()
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+        print(f'{energies.shape = }')
+    
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+        for i in range(energies.shape[-1]):
+            ax.plot_surface(k[0], k[1], energies.real[...,i])
+        plt.show()
         
     return
 
@@ -239,7 +271,8 @@ def test_2D_AFM_GS():
     
     return
 
-def test_2D_AFM():
+def test_2D_AFM(verbose=False, plot=False):
+    print('\n2D Heisenberg antiferromagnet')
     dim = 2
     # Two spins per magnetic unit cell
     r0 = Rotation.identity()
@@ -255,43 +288,51 @@ def test_2D_AFM():
     magsys.add_coupling((0,1), 0, 1, heisen=1.)
     magsys.add_coupling((1,1), 0, 1, heisen=1.)
     
-    magsys.show()
+    if verbose>1:
+        magsys.show()
     
     # Watch out! The primitive lattice vectors have been changed by the magnetic order.
     lattice_vectors = [[1, -1], [1,1]]
     
-    print('\n*** Energy at a single momentum ***')
     k = [1., 1.]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print(f'{ham.shape = }')
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
+    energy_expected = np.array([-3.36588394+0.00000000e+00j, -3.36588394+4.14784945e-17j,  3.36588394-7.07612309e-16j,  3.36588394+0.00000000e+00j])
+    compare(energy, energy_expected, 3.e-9)
     
-    k0 = np.linspace(-0.5, 0.5, num=200)
-    k1 = np.linspace(-0.5, 0.5, num=300)
-    k = np.meshgrid(k0, k1, indexing='ij')
+    if verbose:
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print(f'{ham.shape = }')
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    ham, tau3 = magsys.bloch_ham(k, mode='RL')
+    if plot:
+        print('\n*** Plotting band structure ***')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
-    print(f'{energies.shape = }')
+        k0 = np.linspace(-0.5, 0.5, num=200)
+        k1 = np.linspace(-0.5, 0.5, num=300)
+        k = np.meshgrid(k0, k1, indexing='ij')
     
-    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+        ham, tau3 = magsys.bloch_ham(k, mode='RL')
     
-    for i in range(energies.shape[-1]):
-        ax.plot_surface(k[0], k[1], energies.real[...,i])
-    plt.show()
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+        print(f'{energies.shape = }')
+    
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+        for i in range(energies.shape[-1]):
+            ax.plot_surface(k[0], k[1], energies.real[...,i])
+        plt.show()
     
     return
 
-def test_honeycomb_FM():
+def test_honeycomb_FM(verbose=False, plot=False):
+    print('\nHoneycomb Heisenberg ferromagnet')
     dim = 2
     
     r0 = Rotation.identity()
@@ -305,43 +346,51 @@ def test_honeycomb_FM():
     magsys.add_coupling((1,0), 0, 1, heisen=-1.)
     magsys.add_coupling((0,1), 0, 1, heisen=-1.)
     
-    magsys.show()
+    if verbose>1:
+        magsys.show()
     
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
-    print('\n*** Energy at a single momentum ***')
     k = [1.3, 1.]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print(f'{ham.shape = }')
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
-    k0 = np.linspace(-np.pi, np.pi, num=600)
-    k1 = np.linspace(-np.pi, np.pi, num=600)
-    k = np.meshgrid(k0, k1, indexing='ij')
+    energy_expected = np.array([-3.44259936+3.61683665e-16j, -1.05740064+8.24055451e-17j,  1.05740064+9.04209162e-17j,  3.44259936+2.06013863e-17j])
+    compare(energy, energy_expected, 3.e-9)
     
-    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    if verbose:
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print(f'{ham.shape = }')
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
-    print(f'{energies.shape = }')
-    print(f'{np.amax(np.abs(energies.imag)) = }')
+    if plot:
+        print('\n*** Plotting band structure ***')
+        k0 = np.linspace(-np.pi, np.pi, num=600)
+        k1 = np.linspace(-np.pi, np.pi, num=600)
+        k = np.meshgrid(k0, k1, indexing='ij')
     
-    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+        ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     
-    ax.plot_surface(k[0], k[1], energies.real[...,-1])
-    ax.plot_surface(k[0], k[1], energies.real[...,-2])
-    plt.show()
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+        print(f'{energies.shape = }')
+        print(f'{np.amax(np.abs(energies.imag)) = }')
+    
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+        ax.plot_surface(k[0], k[1], energies.real[...,-1])
+        ax.plot_surface(k[0], k[1], energies.real[...,-2])
+        plt.show()
     
     return
 
-def test_honeycomb_FM_DM():
+def test_honeycomb_FM_DM(verbose=False, plot=False):
+    print('\nHoneycomb Heisenberg & DM ferromagnet')
     dim = 2
     
     r0 = Rotation.identity()
@@ -368,43 +417,51 @@ def test_honeycomb_FM_DM():
     magsys.add_coupling((0,-1), 1, 1, heisen=Jp, D=[0,0,DM])
     magsys.add_coupling((-1,1), 1, 1, heisen=Jp, D=[0,0,DM])
     
-    magsys.show()
+    if verbose>1:
+        magsys.show()
     
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
-    print('\n*** Energy at a single momentum ***')
     k = [1.3, 1.0]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print('ham =\n{}'.format(ham))
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
-    k0 = np.linspace(-np.pi, np.pi, num=600)
-    k1 = np.linspace(-np.pi, np.pi, num=600)
-    k = np.meshgrid(k0, k1, indexing='ij')
+    energy_expected = np.array([-6.5316444 +8.54648265e-17j, -3.83660371+1.36579778e-16j,  3.83660371+1.36579778e-16j,  6.5316444 +8.54648265e-17j])
+    compare(energy, energy_expected, 3.e-9)
     
-    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    if verbose:
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print('ham =\n{}'.format(ham))
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
-    print(f'{energies.shape = }')
-    print(f'{np.amax(np.abs(energies.imag)) = }')
+    if plot:
+        print('\n*** Plotting band structure ***')
+        k0 = np.linspace(-np.pi, np.pi, num=600)
+        k1 = np.linspace(-np.pi, np.pi, num=600)
+        k = np.meshgrid(k0, k1, indexing='ij')
     
-    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+        ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     
-    for i in range(energies.shape[-1]):
-        ax.plot_surface(k[0], k[1], energies.real[...,i])
-    plt.show()
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+        print(f'{energies.shape = }')
+        print(f'{np.amax(np.abs(energies.imag)) = }')
+    
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+        for i in range(energies.shape[-1]):
+            ax.plot_surface(k[0], k[1], energies.real[...,i])
+        plt.show()
     
     return
 
-def test_honeycomb_AFM():
+def test_honeycomb_AFM(verbose=False, plot=False):
+    print('\nHoneycomb Heisenberg antiferroferromagnet')
     dim = 2
     
     r0 = Rotation.identity()
@@ -419,39 +476,46 @@ def test_honeycomb_AFM():
     magsys.add_coupling((1,0), 0, 1, heisen=1.)
     magsys.add_coupling((0,1), 0, 1, heisen=1.)
     
-    magsys.show()
+    if verbose>1:
+        magsys.show()
     
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
-    print('\n*** Energy at a single momentum ***')
     k = [1., 1.3]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
-    print(f'{magsys.spin_magnitudes = }')
-    print(f'{k = }')
-    print(f'{tau3.shape = }')
-    print(f'{ham.shape = }')
-    print(f'{(tau3 @ ham).shape = }')
-    energy = np.linalg.eigvals(tau3 @ ham)
-    print(f'{energy = }')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
-    print('\n*** Plotting band structure ***')
-    k0 = np.linspace(-np.pi, np.pi, num=600)
-    k1 = np.linspace(-np.pi, np.pi, num=600)
-    k = np.meshgrid(k0, k1, indexing='ij')
+    energy_expected = np.array([-4.10681768+0.j, -2.60681768+0.j,  2.60681768+0.j,  4.10681768+0.j])
+    compare(energy, energy_expected, 3.e-9)
     
-    ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
+    if verbose:
+        print('\n*** Energy at a single momentum ***')
+        print(f'{magsys.spin_magnitudes = }')
+        print(f'{k = }')
+        print(f'{tau3.shape = }')
+        print(f'{ham.shape = }')
+        print(f'{(tau3 @ ham).shape = }')
+        print(f'{energy = }')
     
-    energies = np.linalg.eigvals(tau3 @ ham)
-    energies = np.sort(energies, axis=-1)
-    print(f'{energies.shape = }')
-    print(f'{np.amax(np.abs(energies.imag)) = }')
+    if plot:
+        print('\n*** Plotting band structure ***')
+        k0 = np.linspace(-np.pi, np.pi, num=600)
+        k1 = np.linspace(-np.pi, np.pi, num=600)
+        k = np.meshgrid(k0, k1, indexing='ij')
     
-    fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+        ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     
-    for i in range(energies.shape[-1]):
-        ax.plot_surface(k[0], k[1], energies.real[...,i])
-    plt.show()
+        energies = np.linalg.eigvals(tau3 @ ham)
+        energies = np.sort(energies, axis=-1)
+        print(f'{energies.shape = }')
+        print(f'{np.amax(np.abs(energies.imag)) = }')
+    
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
+    
+        for i in range(energies.shape[-1]):
+            ax.plot_surface(k[0], k[1], energies.real[...,i])
+        plt.show()
     
     return
 
@@ -460,6 +524,17 @@ if __name__ == '__main__':
     parser.prog = 'test_magnonsystem.py'
     parser.description = 'Tests for the class magnonsystem_t.'
     parser.epilog = 'Example usage: python3 test_magnonsystem.py'
+    parser.add_argument('-v', '--verbose', help='increase output verbosity', action='store_true')
     args = parser.parse_args()
     np.set_printoptions(linewidth=250)
-    test_honeycomb_FM_DM()
+    
+    verbose = args.verbose
+    
+    
+    test_1D_FM(verbose=verbose)
+    test_1D_AFM(verbose=verbose)
+    test_2D_FM(verbose=verbose)
+    test_2D_AFM(verbose=verbose)
+    test_honeycomb_FM(verbose=verbose)
+    test_honeycomb_FM_DM(verbose=verbose)
+    test_honeycomb_AFM(verbose=verbose)

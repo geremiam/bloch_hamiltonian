@@ -2,8 +2,8 @@ Module contains a class (magnonsystem_t) for computing the Bloch Hamiltonian of 
 
 Future plans for magnonsystem_t:
 
- - Allow interaction terms to be specified with respect to another basis, using a Rotation argument.
- - Allow separate definition of unit cell and magnetic unit cell. That way, redundant interaction definitions are not needed.
+ - Allow interaction terms to be specified with respect to another basis, using a rotation argument.
+ - Allow separate definition of unit cell and magnetic unit cell. That way, repetitive interaction definitions are not needed.
  - Calculate the coefficients of the linear terms and check that they vanish.
 
 Other future plans:
