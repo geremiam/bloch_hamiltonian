@@ -456,7 +456,7 @@ class magnonsystem_t:
         
         return H
     
-    def bloch_ham(self, k, mode, lattice_vectors=None):
+    def bloch_ham(self, k, mode, lattice_vectors=None, squeeze_output=True):
         '''
         Computes Bloch coefficient matrix (order S^1 terms).
         
@@ -515,7 +515,8 @@ class magnonsystem_t:
         
         ham = ham_momentum_RL(q, H) # Get the Bloch coefficient matrix
         
-        ham = np.squeeze(ham) # Gets rid of length-one dimensions
+        if squeeze_output:
+            ham = np.squeeze(ham) # Gets rid of length-one dimensions
         
         return ham, self.tau3
     
