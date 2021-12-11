@@ -6,19 +6,21 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import termcolor as tc
 
-def compare(arr1, arr2, tol):
+def compare(arr1, arr2, tol, prepend=''):
     assert tol > 0., 'The argument tol must be strictly positive'
     diff = np.amax(np.abs(arr1 - arr2))
     
     if diff<=tol:
-        tc.cprint('Passed: diff = {}'.format(diff), 'green')
+        text = tc.colored('PASSED\tdiff = {}'.format(diff), 'green')
     else:
-        tc.cprint('Failed: diff = {}'.format(diff), 'red', attrs=['bold'])
+        text = tc.colored('FAILED\tdiff = {}'.format(diff), 'red', attrs=['bold'])
+    
+    print(prepend + text)
     
     return diff
 
 def test_1D_FM(verbose=False, plot=False):
-    print('\n1D Heisenberg ferromagnet')
+    print('\n--> 1D Heisenberg ferromagnet')
     
     dim = 1
     sl_rotations = [Rotation.identity()]
@@ -31,16 +33,19 @@ def test_1D_FM(verbose=False, plot=False):
     if verbose>1:
         magsys.show()
     
+    classical_energy_expected = -1.0
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [0.1]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-0.38196601+0.j,  0.38196601+0.j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print( 'Classical energy: {}'.format(magsys.classical_energy()) )
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
@@ -139,7 +144,7 @@ def test_1D_AFM(verbose=False, plot=False):
             ((0),1,0)   ((1),0,1)
     |-----0-----------1-----|-----0-----------1-----|
     '''
-    print('\n1D Heisenberg antiferromagnet')
+    print('\n--> 1D Heisenberg antiferromagnet')
     dim = 1
     
     r0 = Rotation.identity()
@@ -158,15 +163,19 @@ def test_1D_AFM(verbose=False, plot=False):
     if verbose>1:
         magsys.show()
     
+    classical_energy_expected = -2.0
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [0.1]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-0.61803399+0.j, -0.61803399+0.j,  0.61803399+0.j,  0.61803399+0.j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
@@ -191,7 +200,7 @@ def test_1D_AFM(verbose=False, plot=False):
     return
 
 def test_2D_FM(verbose=False, plot=False):
-    print('\n2D Heisenberg ferromagnet')
+    print('\n--> 2D Heisenberg ferromagnet')
     dim = 2
     # One spin per magnetic unit cell
     sl_rotations = [Rotation.identity()]
@@ -205,15 +214,19 @@ def test_2D_FM(verbose=False, plot=False):
     if verbose>1:
         magsys.show()
     
+    classical_energy_expected = -2.0
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [0.12, 0.23]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-2.29139628+0.j,  2.29139628+0.j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
@@ -272,7 +285,7 @@ def test_2D_AFM_GS():
     return
 
 def test_2D_AFM(verbose=False, plot=False):
-    print('\n2D Heisenberg antiferromagnet')
+    print('\n--> 2D Heisenberg antiferromagnet')
     dim = 2
     # Two spins per magnetic unit cell
     r0 = Rotation.identity()
@@ -294,15 +307,19 @@ def test_2D_AFM(verbose=False, plot=False):
     # Watch out! The primitive lattice vectors have been changed by the magnetic order.
     lattice_vectors = [[1, -1], [1,1]]
     
+    classical_energy_expected = -4.0
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [1., 1.]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-3.36588394+0.00000000e+00j, -3.36588394+4.14784945e-17j,  3.36588394-7.07612309e-16j,  3.36588394+0.00000000e+00j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
@@ -332,7 +349,7 @@ def test_2D_AFM(verbose=False, plot=False):
     return
 
 def test_honeycomb_FM(verbose=False, plot=False):
-    print('\nHoneycomb Heisenberg ferromagnet')
+    print('\n--> Honeycomb Heisenberg ferromagnet')
     dim = 2
     
     r0 = Rotation.identity()
@@ -352,15 +369,19 @@ def test_honeycomb_FM(verbose=False, plot=False):
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
+    classical_energy_expected = -1.5
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [1.3, 1.]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-3.44259936+3.61683665e-16j, -1.05740064+8.24055451e-17j,  1.05740064+9.04209162e-17j,  3.44259936+2.06013863e-17j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
@@ -390,7 +411,7 @@ def test_honeycomb_FM(verbose=False, plot=False):
     return
 
 def test_honeycomb_FM_DM(verbose=False, plot=False):
-    print('\nHoneycomb Heisenberg & DM ferromagnet')
+    print('\n--> Honeycomb Heisenberg & DM ferromagnet')
     dim = 2
     
     r0 = Rotation.identity()
@@ -423,19 +444,23 @@ def test_honeycomb_FM_DM(verbose=False, plot=False):
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
+    classical_energy_expected = -4.800000000000002
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [1.3, 1.0]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-6.5316444 +8.54648265e-17j, -3.83660371+1.36579778e-16j,  3.83660371+1.36579778e-16j,  6.5316444 +8.54648265e-17j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
-        print('ham =\n{}'.format(ham))
+        print(f'{ham.shape = }')
         print(f'{(tau3 @ ham).shape = }')
         print(f'{energy = }')
     
@@ -461,7 +486,7 @@ def test_honeycomb_FM_DM(verbose=False, plot=False):
     return
 
 def test_honeycomb_AFM(verbose=False, plot=False):
-    print('\nHoneycomb Heisenberg antiferroferromagnet')
+    print('\n--> Honeycomb Heisenberg antiferroferromagnet')
     dim = 2
     
     r0 = Rotation.identity()
@@ -482,15 +507,19 @@ def test_honeycomb_AFM(verbose=False, plot=False):
     ####################################################################################
     lattice_vectors = [ [3./2., -np.sqrt(3.)/2.], [3./2., np.sqrt(3.)/2.] ]
     
+    classical_energy_expected = -4.5
+    compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
+    
     k = [1., 1.3]
     ham, tau3 = magsys.bloch_ham(k, mode='cartesian', lattice_vectors=lattice_vectors)
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-4.10681768+0.j, -2.60681768+0.j,  2.60681768+0.j,  4.10681768+0.j])
-    compare(energy, energy_expected, 3.e-9)
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
     
     if verbose:
-        print('\n*** Energy at a single momentum ***')
+        print('\nClassical energy: {}'.format(magsys.classical_energy()) )
+        print('*** Energy at a single momentum ***')
         print(f'{magsys.spin_magnitudes = }')
         print(f'{k = }')
         print(f'{tau3.shape = }')
