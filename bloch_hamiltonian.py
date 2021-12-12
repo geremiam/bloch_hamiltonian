@@ -140,6 +140,8 @@ class magnonsystem_t:
         self.cal_M = {} # Dictionary in which to store the couplings in the "ladder basis"
         self.m = {} # Dictionary in which to store subblocks of the above
         
+        self.H = {}
+        
         if verbose:
             print('Spin magnitudes and directions:')
             for sl in range(self.n_sl):
@@ -199,6 +201,8 @@ class magnonsystem_t:
         Jtensor: array of shape (3,3)
             The interaction array between spins as shown above.
         '''
+        assert self.H=={}, 'Must define all couplings/interactions before bloch_ham() is first called'
+        
         # Checks on argument R
         assert isinstance(R, tuple), '"R" must be a tuple'
         assert len(R)==self.dim, '"R" should have dim = {} components'.format(self.dim)
@@ -331,6 +335,8 @@ class magnonsystem_t:
         lattice_vectors : dim-element list of dim-element lists
             Specifies the primitive lattice vectors.
         '''
+        assert self.H=={}, 'Must define all Zeeman fields before bloch_ham() is first called'
+        
         # Make "sl_list" a list if it isn't yet
         if not hasattr(sl_list, '__iter__'):
             sl_list = [sl_list]
@@ -421,11 +427,12 @@ class magnonsystem_t:
         # Building H out of the blocks of h #############################################
         
         # Create an array H for each R
-        H = {}
+        # Reset self.H
+        self.H = {}
         # Creates all the needed keys, with zero-valued arrays as values
         for tup in h:
             R = tup[0]
-            H[R] = np.zeros([2*self.n_sl, 2*self.n_sl], complex)
+            self.H[R] = np.zeros([2*self.n_sl, 2*self.n_sl], complex)
         
         # Populating the H arrays with the h arrays
         for tup in h:
@@ -436,7 +443,7 @@ class magnonsystem_t:
             # Block in which to place h[tup]
             inds = ( slice(2*sl1, 2*sl1+2), slice(2*sl2, 2*sl2+2) )
             
-            H[R][inds] += h[tup]
+            self.H[R][inds] += h[tup]
         
         if verbose:
             print('h =')
@@ -444,17 +451,12 @@ class magnonsystem_t:
                 print('\n{} -> \n{}'.format(key, val))
             print('*'*80)
         
-            print('H =')
-            for key, val in H.items():
-                print('\n{} -> \n{}'.format(key, val))
-            print('*'*80)
-        
-        # Check that H[R] and H[-R] are Hermitian conjugates
-        for R in H:
+        # Check that self.H[R] and self.H[-R] are Hermitian conjugates
+        for R in self.H:
             R_neg = tuple(-np.array(R))
-            assert np.allclose( H[R].T.conj(), H[R_neg] ), 'Oops! Looks like H[{}] and H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
+            assert np.allclose( self.H[R].T.conj(), self.H[R_neg] ), 'Oops! Looks like self.H[{}] and self.H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
         
-        return H
+        return
     
     def bloch_ham(self, k, mode, lattice_vectors=None, squeeze_output=True):
         '''
@@ -511,9 +513,10 @@ class magnonsystem_t:
             # Use the lattice vectors to do the basis transformation to the RL basis
             q = (1./(2.*np.pi)) * np.tensordot( lattice_vectors, k, axes=1 )
         
-        H = self.coupling_matrices() # Get coupling matrices
+        if self.H=={}:
+            self.coupling_matrices() # Compute coupling matrices
         
-        ham = ham_momentum_RL(q, H) # Get the Bloch coefficient matrix
+        ham = ham_momentum_RL(q, self.H) # Get the Bloch coefficient matrix
         
         if squeeze_output:
             ham = np.squeeze(ham) # Gets rid of length-one dimensions
@@ -549,6 +552,11 @@ class magnonsystem_t:
         print('*'*80)
         
         self.coupling_matrices(verbose=True)
+        
+        print('self.H =')
+        for key, val in self.H.items():
+            print('\n{} -> \n{}'.format(key, val))
+        print('*'*80)
         
         print(f'{self.classical_energy() = }')
         
