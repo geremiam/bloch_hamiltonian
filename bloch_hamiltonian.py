@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation
 import math
 import numbers
 
-def ham_momentum_RL(q, couplings_dic, verbose=False):
+def ham_momentum_RL(q, couplings_dic, verbose=False, safety=True):
     '''
     Computes the Bloch Hamiltonian at q (expressed in the basis of reciprocal lattice 
     vectors) based on coupling matrices for the different primitive translations.
@@ -26,16 +26,17 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
     '''
     q = np.atleast_1d(q) # Make into numpy array
     
-    dim = q.shape[0]
+    if safety: dim = q.shape[0]
     q_shape = q.shape[1:]
     
     # Use an alias
     H = couplings_dic
     
     # Check that H[R] and H[-R] are Hermitian conjugates
-    for R in H:
-        R_neg = tuple(-np.array(R))
-        assert np.allclose( H[R].T.conj(), H[R_neg] ), 'Oops! Looks like H[{}] and H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
+    if safety:
+        for R in H:
+            R_neg = tuple(-np.array(R))
+            assert np.allclose( H[R].T.conj(), H[R_neg] ), 'Oops! Looks like H[{}] and H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
     
     # Get the shape of the coupling matrices
     keys_list = list( H.keys() )
@@ -45,10 +46,11 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
         print(f'{H_shape = }')
         print(f'{keys_list = }')
     
-    for key in keys_list:
-        assert len(key)==dim, 'Length of keys in couplings_dic and dimensionality must match. dim = {}, len({}) = {}'.format(dim, key, len(key))
-        assert H[key].shape==H_shape, 'Coupling matrices in couplings_dic must have the same shapes'
-        assert H[key].ndim==2, 'Coupling matrices couplings_dic must be two dimensional'
+    if safety:
+        for key in keys_list:
+            assert len(key)==dim, 'Length of keys in couplings_dic and dimensionality must match. dim = {}, len({}) = {}'.format(dim, key, len(key))
+            assert H[key].shape==H_shape, 'Coupling matrices in couplings_dic must have the same shapes'
+            assert H[key].ndim==2, 'Coupling matrices couplings_dic must be two dimensional'
     
     retval = np.zeros(q_shape+H_shape, complex)
     for R in H:
@@ -59,7 +61,7 @@ def ham_momentum_RL(q, couplings_dic, verbose=False):
         # Add term
         retval += H[R] * phase
     
-    assert np.allclose(np.swapaxes(retval.conj(),-1,-2), retval), 'Bloch Hamiltonian should have been Hermitian, but is not'
+    if safety: assert np.allclose(np.swapaxes(retval.conj(),-1,-2), retval), 'Bloch Hamiltonian should have been Hermitian, but is not'
     
     return retval
 
@@ -458,7 +460,7 @@ class magnonsystem_t:
         
         return
     
-    def bloch_ham(self, k, mode, lattice_vectors=None, squeeze_output=True):
+    def bloch_ham(self, k, mode, lattice_vectors=None, squeeze_output=True, safety=True):
         '''
         Computes Bloch coefficient matrix (order S^1 terms).
         
@@ -493,21 +495,22 @@ class magnonsystem_t:
             if k.ndim==1:
                 k = k[..., None]
         
-        assert k.shape[0]==self.dim, 'First dimension of k must match the dimensionality'
+        if safety: assert k.shape[0]==self.dim, 'First dimension of k must match the dimensionality'
         
         # Identify mode
         modes = ['RL', 'cartesian']
-        assert mode in modes, 'mode "{}" is not valid'.format(mode)
+        if safety: assert mode in modes, 'mode "{}" is not valid'.format(mode)
         
         if mode==modes[0]: # Mode 'RL'
             q = k
         elif mode==modes[1]: # Mode 'cartesian'
-            assert lattice_vectors is not None, 'In mode "cartesian", argument lattice_vectors is needed'
-            assert len(lattice_vectors)==self.dim, 'Length of lattice_vectors must match spatial dimension'
-            for el in lattice_vectors:
-                assert len(el)==self.dim, 'Length of individual components of lattice_vectors must match spatial dimension'
-                for i in el:
-                    assert isinstance(i, numbers.Real), 'Components of lattice vectors must be real valued'
+            if safety:
+                assert lattice_vectors is not None, 'In mode "cartesian", argument lattice_vectors is needed'
+                assert len(lattice_vectors)==self.dim, 'Length of lattice_vectors must match spatial dimension'
+                for el in lattice_vectors:
+                    assert len(el)==self.dim, 'Length of individual components of lattice_vectors must match spatial dimension'
+                    for i in el:
+                        assert isinstance(i, numbers.Real), 'Components of lattice vectors must be real valued'
             
             lattice_vectors = np.atleast_2d(lattice_vectors) # Turn into numpy array
             # Use the lattice vectors to do the basis transformation to the RL basis
@@ -516,7 +519,7 @@ class magnonsystem_t:
         if self.H=={}:
             self.coupling_matrices() # Compute coupling matrices
         
-        ham = ham_momentum_RL(q, self.H) # Get the Bloch coefficient matrix
+        ham = ham_momentum_RL(q, self.H, safety=safety) # Get the Bloch coefficient matrix
         
         if squeeze_output:
             ham = np.squeeze(ham) # Gets rid of length-one dimensions
