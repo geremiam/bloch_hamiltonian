@@ -89,6 +89,10 @@ def ham_momentum_RL(q, R_array, coupling_mat_array, verbose=False, safety=True):
         dimensions are the matrix dimensions for the coupling matrices.
         Order of the first dimension must correspond to that of R_array.
     
+    safety: Boolean, default True
+        If False, certain checks, like shape of input arrays and Hermicity of output, are 
+        not done. Cuts down on calculation time if "q" contains few momenta.
+    
     return : numpy array of shape (..., n_orb, n_orb)
         Bloch Hamiltonian of the form sum_R e^{-i k . R} couplings_dic[R]
         The dot product gives 2 pi (n0 q[0,...] + n1 q[1,...] + ...)
@@ -141,6 +145,8 @@ class magnonsystem_t:
     Classical ground-state energy (order S^2 terms) is given by method classical_energy().
     
     Bloch coefficient matrix (order S^1 terms) is given my method bloch_ham().
+    If calculating for a single momentum (or few momenta), significant speedup can be 
+    achieved by setting safety=False.
     
     Method show() prints many class attributes.
     """
@@ -549,6 +555,13 @@ class magnonsystem_t:
         
         lattice_vectors : dim-element list of dim-element lists
             Specifies the primitive lattice vectors.
+        
+        squeeze_output: Boolean, default True
+            If True, length-one dimensions of the output array are suppressed.
+        
+        safety: Boolean, default True
+            If False, certain checks, like shape of input arrays and Hermicity of output, 
+            are not done. Cuts down on calculation time if "q" contains few momenta.
         
         returns:
             ham : shape (..., 2*n_sl, 2*n_sl)
