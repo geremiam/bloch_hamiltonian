@@ -11,9 +11,9 @@ def compare(arr1, arr2, tol, prepend=''):
     diff = np.amax(np.abs(arr1 - arr2))
     
     if diff<=tol:
-        text = tc.colored('PASSED\tdiff = {}'.format(diff), 'green')
+        text = tc.colored('PASSED  diff = {}'.format(diff), 'green')
     else:
-        text = tc.colored('FAILED\tdiff = {}'.format(diff), 'red', attrs=['bold'])
+        text = tc.colored('FAILED  diff = {}'.format(diff), 'red', attrs=['bold'])
     
     print(prepend + text)
     
@@ -217,12 +217,27 @@ def test_2D_FM(verbose=False, plot=False):
     classical_energy_expected = -2.0
     compare(classical_energy_expected, magsys.classical_energy(), 1.e-9, prepend='Classical energy: ')
     
+    # Single-momentum test
     k = [0.12, 0.23]
     ham, tau3 = magsys.bloch_ham(k, mode='RL')
     energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
     
     energy_expected = np.array([-2.29139628+0.j,  2.29139628+0.j])
-    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy: ')
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy (single momentum): ')
+    
+    # Multi-momentum test
+    k0 = np.array([0.1, 0.3])
+    k1 = np.array([0.2, 0.4])
+    k = np.meshgrid(k0, k1, indexing='ij')
+    ham, tau3 = magsys.bloch_ham(k, mode='RL')
+    energy = np.sort( np.linalg.eigvals(tau3 @ ham) )
+    
+    energy_expected = np.array([[[-1.76393202+0.j,  1.76393202+0.j],
+                                 [-4.        +0.j,  4.        +0.j]],
+
+                                [[-4.        +0.j,  4.        +0.j],
+                                 [-6.23606798+0.j,  6.23606798+0.j]]])
+    compare(energy, energy_expected, 3.e-9, prepend='Magnon energy (multiple momenta): ')
     
     if verbose:
         print('\nClassical energy: {}'.format(magsys.classical_energy()) )
