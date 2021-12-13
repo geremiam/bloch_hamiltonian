@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation
 import math
 import numbers
 
-def ham_momentum_RL(q, couplings_dic, verbose=False, safety=True):
+def ham_momentum_RL_dic(q, couplings_dic, verbose=False, safety=True):
     '''
     Computes the Bloch Hamiltonian at q (expressed in the basis of reciprocal lattice 
     vectors) based on coupling matrices for the different primitive translations.
@@ -17,7 +17,7 @@ def ham_momentum_RL(q, couplings_dic, verbose=False, safety=True):
         The output of np.meshgrid(..., indexing='ij') can be used for q.
     
     couplings_dic : dictionary whose keys are the primitive translations (in the form of
-                    tuples) and whose values are numpy arrays givin the coupling matrices
+                    tuples) and whose values are numpy arrays giving the coupling matrices
                     Ex.:
                     (n0,n1,...):np.array(square matrix), where R = n0 a0 + n1 a1 + ...
     
@@ -65,6 +65,63 @@ def ham_momentum_RL(q, couplings_dic, verbose=False, safety=True):
     
     return retval
 
+def ham_momentum_RL(q, R_array, coupling_mat_array, verbose=False, safety=True):
+    '''
+    Computes the Bloch Hamiltonian at q (expressed in the basis of reciprocal lattice 
+    vectors) based on coupling matrices for the different primitive translations.
+    
+    q : Numpy array of shape (n_dim, ...)
+        Momentum expressed in the basis of primitive lattice vectors {b0, b1, ...}, i.e.
+        k = q[0,...] b0 + q[1,...] b1 + ...
+        The first dimension is the momentum components; other dimensions are arbitrary.
+        The output of np.meshgrid(..., indexing='ij') can be used for q.
+    
+    R_array : numpy array of ints of shape (n_ints, dim)
+        Two-dimensional numpy array whose first dimension indexes the different lattice 
+        translations R with nonzero coupling matrices, and whose second dimension are the 
+        (integer-valued) components of the lattice translations, given as
+        R = n0 a0 + n1 a1 + ...
+        Order of the first dimension must correspond to that of coupling_mat_array.
+    
+    coupling_mat_array : numpy array of floats of shape (n_ints, n_orb, n_orb)
+        dimensional numpy array whose first dimension indexes the different lattice 
+        translations R with nonzero coupling matrices, and whose second and third 
+        dimensions are the matrix dimensions for the coupling matrices.
+        Order of the first dimension must correspond to that of R_array.
+    
+    return : numpy array of shape (..., n_orb, n_orb)
+        Bloch Hamiltonian of the form sum_R e^{-i k . R} couplings_dic[R]
+        The dot product gives 2 pi (n0 q[0,...] + n1 q[1,...] + ...)
+    '''
+    # q.shape = (n_dim, ...)
+    # R_array.shape = (n_ints, n_dim)
+    # coupling_mat_array.shape = (n_ints, n_orb, n_orb)
+    
+    if safety:
+        assert R_array.ndim==2
+        assert coupling_mat_array.ndim==3
+        assert coupling_mat_array.shape[1]==coupling_mat_array.shape[2]
+    
+    # q_dot_R.shape = (..., n_ints)
+    q_dot_R = np.tensordot(q, R_array, axes=[[0],[-1]])
+    # phase.shape = (..., n_ints)
+    phase = np.exp(-2.j * np.pi * q_dot_R)
+    
+    # retval.shape = (..., n_orb, n_orb)
+    retval = np.tensordot(phase, coupling_mat_array, axes=1)
+    
+    if safety:
+        assert np.allclose(np.swapaxes(retval.conj(),-1,-2), retval), 'Bloch Hamiltonian should have been Hermitian, but is not'
+    
+    if verbose:
+        print(f'{q.shape = }')
+        print(f'{R_array.shape = }')
+        print(f'{coupling_mat_array.shape = }')
+        print(f'{phase.shape = }')
+        print(f'{retval.shape = }')
+    
+    return retval
+
 
 class magnonsystem_t:
     """
@@ -76,8 +133,10 @@ class magnonsystem_t:
     
     Couplings between spins are specified using either method add_coupling() or 
     method add_coupling_(). (For now, limited to bilinear spin interactions.)
+    Must be called before bloch_ham() is first called.
     
     Zeeman field at each spin can be specified using method add_field().
+    Must be called before bloch_ham() is first called.
     
     Classical ground-state energy (order S^2 terms) is given by method classical_energy().
     
@@ -143,6 +202,8 @@ class magnonsystem_t:
         self.m = {} # Dictionary in which to store subblocks of the above
         
         self.H = {}
+        self.H_keys = None
+        self.H_vals = None
         
         if verbose:
             print('Spin magnitudes and directions:')
@@ -383,11 +444,18 @@ class magnonsystem_t:
         '''
         Computes nonzero coupling matrices between lattice cells (order S^1 terms).
         
-        return: dictionary whose keys are the primitive translations (in the form of
-                tuples) and whose values are numpy arrays givin the coupling matrices
-                Ex.:
-                (n0,n1,...):np.array(square matrix), where R = n0 a0 + n1 a1 + ... is the 
-                associated primitive translation.
+        Saved to self.H:
+            dictionary whose keys are the primitive translations (in the form of tuples) 
+            and whose values are numpy arrays givin the coupling matrices
+            Ex.:
+            (n0,n1,...):np.array(square matrix), where R = n0 a0 + n1 a1 + ... is the 
+            associated primitive translation.
+        
+        Saved to self.H_keys:
+            Keys of the dictionary self.H
+        
+        Saved to self.H_vals:
+            Values of the dictionary self.H
         '''
         # Define h, as defined in docs
         h = {}
@@ -458,6 +526,10 @@ class magnonsystem_t:
             R_neg = tuple(-np.array(R))
             assert np.allclose( self.H[R].T.conj(), self.H[R_neg] ), 'Oops! Looks like self.H[{}] and self.H[{}] are not Hermitian conjugates, though they should be.'.format(R,R_neg)
         
+        # Extracting keys and values back to back is guaranteed to give the same order
+        self.H_keys = np.array(list(self.H.keys()))
+        self.H_vals = np.array(list(self.H.values()))
+        
         return
     
     def bloch_ham(self, k, mode, lattice_vectors=None, squeeze_output=True, safety=True):
@@ -519,7 +591,7 @@ class magnonsystem_t:
         if self.H=={}:
             self.coupling_matrices() # Compute coupling matrices
         
-        ham = ham_momentum_RL(q, self.H, safety=safety) # Get the Bloch coefficient matrix
+        ham = ham_momentum_RL(q, self.H_keys, self.H_vals, safety=safety) # Get the Bloch coefficient matrix
         
         if squeeze_output:
             ham = np.squeeze(ham) # Gets rid of length-one dimensions
