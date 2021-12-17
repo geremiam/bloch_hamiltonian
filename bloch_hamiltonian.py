@@ -184,32 +184,34 @@ class magnonsystem_t:
         
         #################################################################################
         
+        # Matrix for transforming to and from the spin ladder basis
         self._N = np.array([[  1./sqrt(2.),  1./sqrt(2.), 0.],
                             [-1.j/sqrt(2.), 1.j/sqrt(2.), 0.],
                             [           0.,           0., 1.]])
         
+        self.tau3 = np.diag([1.,-1.]*self.n_sl) # The symplectic identity for the Hamiltonians in this class
+        
         self.dim = dim # Spatial dimensionality of system
         
-        self.spin_magnitudes = spin_magnitudes
+        self.spin_magnitudes = spin_magnitudes # Spin magnitudes of each spin in the magnetic unit cell
         
         self.n_sl = len(sl_rotations) # Number of sublattices in the magnetic unit cell
         
-        self.tau3 = np.diag([1.,-1.]*self.n_sl)
+        self.sl_rotations = sl_rotations # List of rotation objects giving the classical ordering directions
         
-        self.sl_rotations = sl_rotations # List of rotation objects
+        self.fields = {} # Dictionary in which to store nonzero Zeeman fields
+        self.fields_rot = {} # Same as the above, but rotated into the locally collinear basis
         
-        self.fields = {}
-        self.fields_rot = {}
+        self.Jtensors = {} # Dictionary in which to store bilinear spin interactions
+        self.Jtensors_sym = {} # Symmetrized version of the above
+        self.Jtensors_sym_rot = {} # The above, but rotated into the locally collinear basis
+        self.cal_J = {} # The above, but transformed into the "ladder basis"
+        self.cal_j = {} # The (+,-) subblocks of the above
         
-        self.couplings = {} # Dictionary in which to store couplings
-        self.couplings_sym = {} # Dictionary in which to store couplings in a symmetric way
-        self.couplings_sym_rot = {} # Dictionary in which to store the couplings in the local basis
-        self.cal_M = {} # Dictionary in which to store the couplings in the "ladder basis"
-        self.m = {} # Dictionary in which to store subblocks of the above
-        
-        self.H = {}
-        self.H_keys = None
-        self.H_vals = None
+        # These three objects are set by the method coupling_matrices(), called when bloch_ham() is first called
+        self.H = {} # Dictionary in which to store coupling matrices between lattice sites
+        self.H_keys = None # The keys of self.H, stored as a numpy array
+        self.H_vals = None # The values of self.H, stored as a numpy array
         
         if verbose:
             print('Spin magnitudes and directions:')
@@ -243,8 +245,8 @@ class magnonsystem_t:
         tup_rev = (tuple(-np.array(tup[0])), tup[2], tup[1]) # Coupling in reverse direction
         
         # Check for both directions
-        tup_check     = tup     in self.couplings
-        tup_rev_check = tup_rev in self.couplings
+        tup_check     = tup     in self.Jtensors
+        tup_rev_check = tup_rev in self.Jtensors
         
         # Redundant check
         assert not (tup_check and tup_rev_check), 'Intra-spin terms not expected'
@@ -299,20 +301,20 @@ class magnonsystem_t:
         assert not self.check_for_coupling(tup), 'This term or its inverse has already been added'
         
         # Assign value as given by user
-        self.couplings[tup] = Jtensor
+        self.Jtensors[tup] = Jtensor
         
         # Symmetrize couplings, such that Jtensor_ji = Jtensor_ij^T
         tup_rev = (tuple(-np.array(R)), sl2, sl1)
-        self.couplings_sym[tup]     = Jtensor
-        self.couplings_sym[tup_rev] = Jtensor.T
+        self.Jtensors_sym[tup]     = Jtensor
+        self.Jtensors_sym[tup_rev] = Jtensor.T
         
         for t in [tup, tup_rev]:
             # Compute the couplings as seen in the local bases
-            self.couplings_sym_rot[t] = self.sl_rotations[t[1]].as_matrix().T @ self.couplings_sym[t] @ self.sl_rotations[t[2]].as_matrix()
+            self.Jtensors_sym_rot[t] = self.sl_rotations[t[1]].as_matrix().T @ self.Jtensors_sym[t] @ self.sl_rotations[t[2]].as_matrix()
             # Compute the couplings in the "ladder basis"
-            self.cal_M[t] = self._N.T.conj() @ self.couplings_sym_rot[t] @ self._N
+            self.cal_J[t] = self._N.T.conj() @ self.Jtensors_sym_rot[t] @ self._N
             # Sub-block of the above
-            self.m[t] = self.cal_M[t][0:2,0:2]
+            self.cal_j[t] = self.cal_J[t][0:2,0:2]
         
         return
     
@@ -433,10 +435,10 @@ class magnonsystem_t:
         accumulator = 0.
         
         # Contribution from bilinear spin interactions
-        for tup in self.couplings_sym_rot:
+        for tup in self.Jtensors_sym_rot:
             sl1 = tup[1]
             sl2 = tup[2]
-            Jtilde_zz = self.couplings_sym_rot[tup][2,2]
+            Jtilde_zz = self.Jtensors_sym_rot[tup][2,2]
             accumulator += 0.5 * self.spin_magnitudes[sl1] * Jtilde_zz * self.spin_magnitudes[sl2]
         
         # Contribution from Zeeman fields
@@ -465,11 +467,11 @@ class magnonsystem_t:
         '''
         # Define h, as defined in docs
         h = {}
-        # One contribution to h comes from m, up to a factor involving spin magnitudes
-        for key in self.m:
+        # One contribution to h comes from cal_j, up to a factor involving spin magnitudes
+        for key in self.cal_j:
             sl1 = key[1]
             sl2 = key[2]
-            h[key] = np.sqrt(self.spin_magnitudes[sl1] * self.spin_magnitudes[sl2]) * self.m[key]
+            h[key] = np.sqrt(self.spin_magnitudes[sl1] * self.spin_magnitudes[sl2]) * self.cal_j[key]
         
         # Adding diagonal contribution #################################################
         
@@ -488,15 +490,15 @@ class magnonsystem_t:
             
             # Add other contribution (from the zz components of couplings_sym_rot)
             accumulator = 0.
-            for tup in self.couplings_sym_rot:
+            for tup in self.Jtensors_sym_rot:
                 R = tup[0]
                 sl1 = tup[1]
                 sl2 = tup[2]
                 
                 if sl2==sl:
-                    accumulator += - self.spin_magnitudes[sl1] * self.couplings_sym_rot[tup][2,2] / 2.
+                    accumulator += - self.spin_magnitudes[sl1] * self.Jtensors_sym_rot[tup][2,2] / 2.
                 if sl1==sl:
-                    accumulator += - self.spin_magnitudes[sl2] * self.couplings_sym_rot[tup][2,2] / 2.
+                    accumulator += - self.spin_magnitudes[sl2] * self.Jtensors_sym_rot[tup][2,2] / 2.
             h[tup_diag] += accumulator * np.eye(2)
         
         
@@ -619,23 +621,23 @@ class magnonsystem_t:
         print(f'{self.spin_magnitudes = }')
         print(f'{self.fields = }')
         
-        print('\nself.couplings =')
-        for key, val in self.couplings.items():
+        print('\nself.Jtensors =')
+        for key, val in self.Jtensors.items():
             print('\n{} -> \n{}'.format(key, val))
         print('*'*80)
     
-        print('self.couplings_sym =')
-        for key, val in self.couplings_sym.items():
+        print('self.Jtensors_sym =')
+        for key, val in self.Jtensors_sym.items():
             print('\n{} -> \n{}'.format(key, val))
         print('*'*80)
     
-        print('self.cal_M =')
-        for key, val in self.cal_M.items():
+        print('self.cal_J =')
+        for key, val in self.cal_J.items():
             print('\n{} -> \n{}'.format(key, val))
         print('*'*80)
         
-        print('self.m =')
-        for key, val in self.m.items():
+        print('self.cal_j =')
+        for key, val in self.cal_j.items():
             print('\n{} -> \n{}'.format(key, val))
         print('*'*80)
         
