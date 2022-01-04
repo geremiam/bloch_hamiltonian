@@ -189,14 +189,14 @@ class magnonsystem_t:
                             [-1.j/sqrt(2.), 1.j/sqrt(2.), 0.],
                             [           0.,           0., 1.]])
         
+        self.n_sl = len(sl_rotations) # Number of sublattices in the magnetic unit cell
+        
         self.tau3 = np.diag([1.,-1.]*self.n_sl) # The symplectic identity for the Hamiltonians in this class
         
         self.dim = dim # Spatial dimensionality of system
         
         self.spin_magnitudes = spin_magnitudes # Spin magnitudes of each spin in the magnetic unit cell
-        
-        self.n_sl = len(sl_rotations) # Number of sublattices in the magnetic unit cell
-        
+                
         self.sl_rotations = sl_rotations # List of rotation objects giving the classical ordering directions
         
         self.fields = {} # Dictionary in which to store nonzero Zeeman fields
